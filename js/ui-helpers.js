@@ -84,7 +84,7 @@ function renderAuthState() {
     const user = AuthStore.get();
 
     if (!user) {
-        slot.innerHTML = `<a href="login.html" class="btn btn-gold">👤 Iniciar sesión</a>`;
+        slot.innerHTML = `<a href="login.html" class="btn btn-gold">Iniciar sesión</a>`;
         return;
     }
 
@@ -94,7 +94,7 @@ function renderAuthState() {
         <span class="auth-chip">
             <span class="auth-chip__avatar">${initial}</span>
             <span class="auth-chip__name">${firstName}</span>
-            <a href="mis-tickets.html" class="btn btn-outline">🎟️ Mis tickets</a>
+            <a href="mis-tickets.html" class="btn btn-outline">Mis tickets</a>
             <button class="btn btn-ghost" data-logout type="button">Cerrar sesión</button>
         </span>`;
     slot.querySelector("[data-logout]").addEventListener("click", () => {
