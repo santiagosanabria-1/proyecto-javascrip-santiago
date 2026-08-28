@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CINEVERSE — Iniciar sesión</title>
+<link rel="stylesheet" href="css/styles.css"/>
+<link rel="stylesheet" href="css/animations.css"/>
+</head>
+<body class="login-page">
+
+<div class="login-bg" aria-hidden="true">
+    <div class="login-bg__layer" data-bg-layer></div>
+    <div class="login-bg__layer" data-bg-layer></div>
+    <div class="login-bg__layer" data-bg-layer></div>
+    <div class="login-bg__scrim"></div>
+</div>
+
+<nav class="navbar" data-navbar style="background:transparent;">
+    <a class="navbar__brand" href="index.html">Cine<span>verse</span></a>
+    <a href="index.html" class="btn btn-outline">← Volver a la cartelera</a>
+</nav>
+
+<main class="login-main">
+    <div class="login-card glass-panel">
+        <div class="login-tabs">
+            <button class="login-tab is-active" data-tab="signin" type="button">Iniciar sesión</button>
+            <button class="login-tab" data-tab="signup" type="button">Crear cuenta</button>
+        </div>
+
+        <form data-form="signin" class="login-form">
+            <div>
+                <label class="field-label">Correo electrónico</label>
+                <input class="field-input" type="email" placeholder="correo@ejemplo.com" data-signin-email required/>
+            </div>
+            <div>
+                <label class="field-label">Contraseña</label>
+                <input class="field-input" type="password" placeholder="••••••••" data-signin-password required/>
+            </div>
+            <p class="field-error hidden" data-signin-error><span></span></p>
+            <button type="submit" class="btn btn-gold btn-block">🎬 Entrar</button>
+        </form>
+
+        <form data-form="signup" class="login-form hidden">
+            <div>
+                <label class="field-label">Nombre completo</label>
+                <input class="field-input" type="text" placeholder="Ej. Juan Pérez" data-signup-name required/>
+            </div>
+            <div>
+                <label class="field-label">Correo electrónico</label>
+                <input class="field-input" type="email" placeholder="correo@ejemplo.com" data-signup-email required/>
+            </div>
+            <div>
+                <label class="field-label">Contraseña</label>
+                <input class="field-input" type="password" placeholder="Mínimo 6 caracteres" data-signup-password required/>
+            </div>
+            <p class="field-error hidden" data-signup-error><span></span></p>
+            <button type="submit" class="btn btn-gold btn-block">✦ Crear cuenta</button>
+        </form>
+
+        <p class="login-note">Cuenta de demostración: tu contraseña se guarda solo como hash (SHA-256), nunca en texto plano.</p>
+    </div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/api/tmdb.js"></script>
+<script src="js/api/cine.js"></script>
+<script src="js/store.js"></script>
+<script src="js/animations/global.js"></script>
+<script src="js/ui-helpers.js"></script>
+<script src="js/login.js"></script>
+</body>
+</html>
