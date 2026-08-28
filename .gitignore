@@ -1,0 +1,16 @@
+# Dependencias
+node_modules/
+
+# Base de datos de JSON Server: se genera de forma determinística con
+# `npm run seed` y además muta en tiempo de ejecución (reservas, compras,
+# usuarios de prueba) — no corresponde versionarla.
+db.json
+
+# Sistema operativo / editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Logs
+*.log
+npm-debug.log*
