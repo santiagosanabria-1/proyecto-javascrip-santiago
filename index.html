@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CINEVERSE — Cartelera</title>
+<meta name="description" content="Plataforma de cine premium: cartelera, funciones, asientos y compra de entradas."/>
+<link rel="stylesheet" href="css/styles.css"/>
+<link rel="stylesheet" href="css/animations.css"/>
+</head>
+<body>
+
+<nav class="navbar" data-navbar>
+    <a class="navbar__brand" href="index.html">Cine<span>verse</span></a>
+    <div class="navbar__links">
+        <a class="navbar__link is-active" href="index.html">Cartelera</a>
+        <a class="navbar__link" href="#" data-scroll-to="[data-gallery]">Galería</a>
+        <a class="navbar__link" href="#">Próximamente</a>
+        <a class="navbar__link" href="#">Experiencias</a>
+    </div>
+    <span data-auth-slot></span>
+</nav>
+
+<section class="hero" data-hero>
+    <div class="hero__layer-far" data-hero-parallax-far></div>
+    <div class="hero__backdrop" data-hero-backdrop></div>
+    <div class="hero__grain"></div>
+    <div class="hero__vignette"></div>
+    <div class="hero__vignette hero__vignette--side"></div>
+    <div class="hero__layer-near" data-hero-parallax-near></div>
+
+    <div class="hero__content">
+        <div class="hero__badges" data-hero-genres data-hero-reveal></div>
+        <h1 class="hero__title" data-hero-title>CARGANDO</h1>
+        <div class="hero__meta" data-hero-reveal>
+            <span><strong data-hero-rating>—</strong> MATCH</span>
+            <span data-hero-duration>—</span>
+            <span>ESTRENO EN CARTELERA</span>
+        </div>
+        <p class="hero__overview" data-hero-overview data-hero-reveal></p>
+        <div class="hero__actions" data-hero-reveal>
+            <button class="btn btn-gold" data-hero-details>Ver detalles</button>
+            <button class="btn btn-outline" data-hero-trailer>▶ Ver trailer</button>
+        </div>
+    </div>
+</section>
+
+<main class="container">
+    <div class="toolbar">
+        <div class="filter-row" data-filter-bar>
+            <button class="pill is-active" data-filter="todos">Todos</button>
+            <button class="pill" data-filter="accion">Acción</button>
+            <button class="pill" data-filter="scifi">Sci-Fi</button>
+            <button class="pill" data-filter="drama">Drama</button>
+            <button class="pill" data-filter="comedia">Comedia</button>
+            <button class="pill" data-filter="terror">Terror</button>
+        </div>
+        <div class="search-field">
+            <span class="search-field__icon">⌕</span>
+            <input type="text" placeholder="Buscar película..." data-search-input/>
+        </div>
+    </div>
+
+    <section style="padding:56px 0;">
+        <div class="section-title"><span class="section-title__tag">01</span><h2>En cartelera</h2><span class="section-title__line"></span></div>
+        <div class="movies-grid" data-movies-grid></div>
+        <div class="catalog-footer">
+            <p class="catalog-footer__status" data-catalog-status></p>
+            <button class="btn btn-outline" data-load-more hidden>Cargar más películas</button>
+            <div data-catalog-sentinel style="height:1px;width:100%;"></div>
+        </div>
+    </section>
+
+    <section class="gallery-section" data-gallery>
+        <div class="section-title"><span class="section-title__tag">02</span><h2>Galería</h2><span class="section-title__line"></span></div>
+        <div class="gallery-stage"><div class="gallery-track" data-gallery-track></div></div>
+        <p class="gallery-hint">Desplázate para recorrer el catálogo completo</p>
+    </section>
+</main>
+
+<footer class="site-footer container">
+    <div class="site-footer__brand">CINE<span style="color:var(--blue)">VERSE</span></div>
+    <div class="site-footer__links">
+        <a href="#">Privacidad</a>
+        <a href="#">Términos</a>
+        <a href="#">Ayuda</a>
+        <a href="#">Contacto</a>
+    </div>
+    <div class="site-footer__copy">© 2026 CINEVERSE PREMIUM EXPERIENCES</div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/api/tmdb.js"></script>
+<script src="js/api/cine.js"></script>
+<script src="js/store.js"></script>
+<script src="js/animations/global.js"></script>
+<script src="js/animations/home.js"></script>
+<script src="js/ui-helpers.js"></script>
+<script src="js/cartelera.js"></script>
+</body>
+</html>

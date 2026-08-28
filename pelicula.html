@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CINEVERSE — Detalle</title>
+<link rel="stylesheet" href="css/styles.css"/>
+<link rel="stylesheet" href="css/animations.css"/>
+</head>
+<body>
+
+<nav class="navbar" data-navbar>
+    <a class="navbar__brand" href="index.html">Cine<span>verse</span></a>
+    <div class="navbar__links">
+        <a class="navbar__link" href="index.html">Cartelera</a>
+        <a class="navbar__link is-active" href="pelicula.html">Ficha</a>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+        <span data-auth-slot></span>
+        <a href="index.html" class="btn btn-outline">← Volver</a>
+    </div>
+</nav>
+
+<section class="detail-hero">
+    <div class="detail-hero__backdrop" data-detail-backdrop></div>
+    <div class="hero__vignette"></div>
+    <div class="hero__vignette hero__vignette--side"></div>
+    <div class="detail-hero__content">
+        <div class="detail-poster" data-detail-poster-wrap>
+            <img data-detail-poster alt="Poster"/>
+        </div>
+        <div class="detail-info">
+            <h1 data-detail-title data-detail-reveal>Cargando...</h1>
+            <div class="detail-badges" data-detail-genres data-detail-reveal></div>
+            <p class="detail-overview" data-detail-overview data-detail-reveal></p>
+            <div class="detail-facts" data-detail-reveal>
+                <div>Director: <b data-detail-director>—</b></div>
+            </div>
+            <div data-detail-reveal>
+                <button class="btn btn-gold" data-detail-trailer>▶ Ver trailer</button>
+            </div>
+        </div>
+    </div>
+</section>
+
+<main class="container">
+    <section class="cast-section">
+        <div class="section-title"><span class="section-title__tag">CAST</span><h2>Reparto</h2><span class="section-title__line"></span></div>
+        <div class="cast-grid" data-cast-grid></div>
+    </section>
+
+    <section class="functions-section">
+        <div class="section-title"><span class="section-title__tag">FUNCIONES</span><h2>Elige tu horario</h2><span class="section-title__line"></span></div>
+        <div class="date-row" data-date-list></div>
+        <div class="showtime-grid" data-showtime-grid></div>
+    </section>
+
+    <section class="ratings-section">
+        <div class="section-title"><span class="section-title__tag">REVIEWS</span><h2>Valoraciones</h2><span class="section-title__line"></span></div>
+        <div class="ratings-grid">
+            <div class="glass-panel" style="padding:28px;">
+                <h3 style="margin-bottom:18px;font-weight:700;">Deja tu valoración</h3>
+                <form data-rating-form style="display:flex;flex-direction:column;gap:16px;">
+                    <select class="field-input" data-rating-value>
+                        <option value="0">Selecciona una puntuación</option>
+                        <option value="5">★★★★★ (5)</option>
+                        <option value="4">★★★★☆ (4)</option>
+                        <option value="3">★★★☆☆ (3)</option>
+                        <option value="2">★★☆☆☆ (2)</option>
+                        <option value="1">★☆☆☆☆ (1)</option>
+                    </select>
+                    <textarea class="field-input" rows="3" placeholder="Escribe un comentario (opcional)" data-rating-comment></textarea>
+                    <button type="submit" class="btn btn-gold">Enviar valoración</button>
+                </form>
+            </div>
+            <div class="glass-panel" style="padding:28px;max-height:340px;overflow-y:auto;" data-ratings-list></div>
+        </div>
+    </section>
+</main>
+
+<footer class="site-footer container">
+    <div class="site-footer__brand">CINE<span style="color:var(--blue)">VERSE</span></div>
+    <div class="site-footer__links">
+        <a href="#">Privacidad</a><a href="#">Términos</a><a href="#">Ayuda</a><a href="#">Contacto</a>
+    </div>
+    <div class="site-footer__copy">© 2026 CINEVERSE PREMIUM EXPERIENCES</div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/api/tmdb.js"></script>
+<script src="js/api/cine.js"></script>
+<script src="js/store.js"></script>
+<script src="js/animations/global.js"></script>
+<script src="js/animations/movie.js"></script>
+<script src="js/ui-helpers.js"></script>
+<script src="js/pelicula.js"></script>
+</body>
+</html>
