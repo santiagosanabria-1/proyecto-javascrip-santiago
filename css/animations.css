@@ -1,0 +1,42 @@
+/* ==================================================================
+   css/animations.css
+   Estados iniciales que js/animations/*.js anima al entrar (GSAP parte
+   desde acá) + la capa de accesibilidad `prefers-reduced-motion`.
+   No define keyframes de scroll (eso vive en animations.js): solo el
+   punto de partida visual y los interruptores de seguridad.
+   ================================================================== */
+
+[data-hero-reveal],
+[data-detail-reveal] {
+    opacity: 0;
+    transform: translateY(24px);
+}
+
+.hero__title .char { opacity: 0; }
+
+/* Perspectiva 3D real en los elementos que GSAP rota (poster, cards). */
+.detail-poster,
+.movie-card,
+.gallery-card {
+    transform-style: preserve-3d;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+    }
+    [data-hero-reveal],
+    [data-detail-reveal],
+    .hero__title .char {
+        opacity: 1 !important;
+        transform: none !important;
+    }
+    .movie-card:hover,
+    .gallery-card,
+    .detail-poster {
+        transform: none !important;
+    }
+}
