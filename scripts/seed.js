@@ -87,9 +87,22 @@ function buildSeats() {
     return seats;
 }
 
+/** Hoy + los próximos 2 días, en vez de fechas fijas -- así el seed nunca
+ *  queda con funciones "programadas" en el pasado sin importar cuándo se
+ *  ejecute `node scripts/seed.js`. */
+function nextDates(count) {
+    const dates = [];
+    const today = new Date();
+    for (let i = 0; i < count; i++) {
+        const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
+        dates.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+    }
+    return dates;
+}
+
 function buildFunctions() {
     const functions = [];
-    const dates = ["2026-08-27", "2026-08-28", "2026-08-29"];
+    const dates = nextDates(3);
     const timesByRoom = { 1: ["14:30", "17:15", "21:00"], 2: ["16:00", "19:30", "22:15"] };
     const basePrice = { 1: 6500, 2: 9800 };
     let id = 1;
