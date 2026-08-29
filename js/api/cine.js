@@ -8,6 +8,10 @@ const CINE = (() => {
     // Solo hay un puñado de salas y se consultan repetidamente (cada función,
     // cada cambio de fecha) — se cachean en memoria por el resto de la sesión.
     const roomCache = new Map();
+    // Un asiento "selected" que nadie confirmó ni liberó (pestaña cerrada de
+    // golpe, red caída) no debe quedar bloqueado para siempre -- pasado este
+    // tiempo se trata como disponible de nuevo (ver getSeatMap).
+    const SELECTION_HOLD_MINUTES = 10;
 
     async function request(path, options = {}) {
         let response;
@@ -76,14 +80,39 @@ const CINE = (() => {
         return request(`/functionSeats?functionId=${encodeURIComponent(functionId)}`);
     }
 
-    async function updateFunctionSeat(id, status) {
+    async function updateFunctionSeat(id, status, extra = {}) {
         return request(`/functionSeats/${id}`, {
             method: "PATCH",
-            body: JSON.stringify({ status })
+            body: JSON.stringify({ status, ...extra })
         });
     }
 
-    /** Cruza seats (físicos) + functionSeats (estado según la función) en un solo mapa. */
+    function isStaleSelection(fs) {
+        if (fs.status !== "selected" || !fs.selectedAt) return false;
+        const ageMs = Date.now() - new Date(fs.selectedAt).getTime();
+        return ageMs > SELECTION_HOLD_MINUTES * 60 * 1000;
+    }
+
+    /**
+     * Marca un asiento como "selected" (elegido, todavía no confirmado) para
+     * ESTA función, atado a `holderToken` (identifica la pestaña/sesión que
+     * lo tomó). Es la pieza que faltaba para que la relación función+asiento
+     * sea real de verdad: dos personas no pueden "elegir" el mismo asiento
+     * al mismo tiempo, porque el segundo PATCH ve que ya no está disponible.
+     */
+    async function selectFunctionSeat(functionSeatId, holderToken) {
+        return updateFunctionSeat(functionSeatId, "selected", { holderToken, selectedAt: new Date().toISOString() });
+    }
+
+    /** Libera un asiento que se había "seleccionado" (deselección, cancelar,
+     *  cerrar la pestaña) -- vuelve a quedar disponible para cualquiera. */
+    async function releaseFunctionSeat(functionSeatId) {
+        return updateFunctionSeat(functionSeatId, "available", { holderToken: null, selectedAt: null });
+    }
+
+    /** Cruza seats (físicos) + functionSeats (estado según la función) en un
+     *  solo mapa. Las selecciones "selected" abandonadas hace más de
+     *  SELECTION_HOLD_MINUTES se muestran (y se liberan) como disponibles. */
     async function getSeatMap(functionId, roomId) {
         const [seats, functionSeats] = await Promise.all([
             getSeatsByRoom(roomId),
@@ -94,6 +123,10 @@ const CINE = (() => {
             .sort((a, b) => (a.row === b.row ? a.number - b.number : a.row.localeCompare(b.row)))
             .map((seat) => {
                 const fs = statusBySeatId.get(String(seat.id));
+                if (fs && isStaleSelection(fs)) {
+                    releaseFunctionSeat(fs.id).catch(() => {}); // auto-limpieza, best-effort
+                    return { ...seat, functionSeatId: fs.id, status: "available" };
+                }
                 return { ...seat, functionSeatId: fs ? fs.id : null, status: fs ? fs.status : "available" };
             });
     }
@@ -101,13 +134,16 @@ const CINE = (() => {
     /**
      * Vuelve a consultar el estado REAL de los asientos justo antes de
      * confirmar una reserva/compra — nunca se confía solo en el frontend.
+     * Un asiento solo es válido para confirmar si sigue "selected" Y el
+     * `holderToken` es el mismo que lo seleccionó (si otra sesión lo tomó
+     * después, o si nadie lo tiene reservado, la operación se detiene).
      */
-    async function verifySeatsAvailable(functionId, functionSeatIds) {
+    async function verifySeatsAvailable(functionId, functionSeatIds, holderToken) {
         const current = await getFunctionSeats(functionId);
         const byId = new Map(current.map((fs) => [String(fs.id), fs]));
         return functionSeatIds.every((id) => {
             const fs = byId.get(String(id));
-            return fs && fs.status === "available";
+            return fs && fs.status === "selected" && fs.holderToken === holderToken;
         });
     }
 
@@ -168,6 +204,8 @@ const CINE = (() => {
         getSeatsByRoom,
         getFunctionSeats,
         updateFunctionSeat,
+        selectFunctionSeat,
+        releaseFunctionSeat,
         getSeatMap,
         verifySeatsAvailable,
         createReservation,
