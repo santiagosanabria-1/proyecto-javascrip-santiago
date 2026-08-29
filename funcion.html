@@ -12,7 +12,7 @@
 <nav class="navbar" data-navbar>
     <a class="navbar__brand" href="index.html">Cine<span>verse</span></a>
     <span class="navbar__step">PASO 3 DE 4 · ASIENTOS</span>
-    <a href="javascript:history.back()" class="btn btn-outline">← Volver</a>
+    <a href="#" data-back-link class="btn btn-outline">← Volver</a>
 </nav>
 
 <main class="seat-page">
@@ -20,6 +20,16 @@
         <h1 data-seat-movie-title>Cargando...</h1>
     </div>
     <p class="seat-page__subtitle" data-seat-subtitle></p>
+
+    <div class="ticket-qty">
+        <span class="field-label">CANTIDAD DE TICKETS</span>
+        <div class="ticket-qty__control">
+            <button type="button" class="ticket-qty__btn" data-qty-minus aria-label="Menos tickets">−</button>
+            <span class="ticket-qty__value" data-qty-value>1</span>
+            <button type="button" class="ticket-qty__btn" data-qty-plus aria-label="Más tickets">+</button>
+        </div>
+        <p class="ticket-qty__hint" data-qty-hint></p>
+    </div>
 
     <div class="screen-arc"><div class="screen-arc__glow"></div><div class="screen-arc__bar"></div></div>
     <p class="screen-label">PANTALLA</p>
@@ -43,6 +53,11 @@
             <div>
                 <p class="seat-summary__label">ASIENTOS ELEGIDOS</p>
                 <p class="seat-summary__value" data-summary-seats>Ninguno seleccionado</p>
+            </div>
+            <div class="seat-summary__divider"></div>
+            <div>
+                <p class="seat-summary__label">PRECIO UNITARIO</p>
+                <p class="seat-summary__value" data-summary-unit-price>$0</p>
             </div>
             <div class="seat-summary__divider"></div>
             <div>

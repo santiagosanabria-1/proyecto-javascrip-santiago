@@ -461,6 +461,19 @@ ul { list-style: none; }
 .seat-page__title h1 { font-family: var(--font-display); font-weight: 600; font-size: clamp(26px, 3.6vw, 40px); letter-spacing: 0; text-transform: uppercase; }
 .seat-page__subtitle { font-family: var(--font-label); font-size: 12.5px; color: var(--text-muted); text-align: center; margin-bottom: 30px; }
 
+.ticket-qty { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 30px; }
+.ticket-qty__control { display: flex; align-items: center; gap: 18px; }
+.ticket-qty__btn {
+    width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--border-strong);
+    background: var(--surface-3); color: var(--text); font-size: 20px; line-height: 1;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    transition: all var(--dur-base) var(--ease);
+}
+.ticket-qty__btn:hover:not(:disabled) { border-color: var(--gold); color: var(--gold); }
+.ticket-qty__btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.ticket-qty__value { font-family: var(--font-display); font-weight: 600; font-size: 26px; min-width: 32px; text-align: center; }
+.ticket-qty__hint { font-family: var(--font-label); font-weight: 600; font-size: 11.5px; color: var(--gold); min-height: 16px; text-align: center; }
+
 .screen-arc { position: relative; width: 100%; max-width: 640px; height: 12px; margin: 10px auto 6px; }
 .screen-arc__glow { position: absolute; inset: 0; border-radius: 50% 50% 0 0/100% 100% 0 0; background: radial-gradient(ellipse at center, rgba(77,163,255,.55), transparent 75%); filter: blur(3px); }
 .screen-arc__bar { position: absolute; left: 8%; right: 8%; top: 0; height: 3px; border-radius: var(--r-full); background: linear-gradient(to right, transparent, var(--blue) 20%, var(--blue) 80%, transparent); box-shadow: 0 0 22px 2px rgba(77,163,255,.65); }
@@ -490,6 +503,8 @@ ul { list-style: none; }
 .seat--selected { background: linear-gradient(135deg, var(--gold-strong), #a85400); border-color: var(--gold); color: #1a0c00; box-shadow: var(--glow-gold); transform: translateY(-1px) scale(1.06); }
 .seat--reserved { background: var(--blue-deep); border-color: rgba(77,163,255,.35); color: rgba(77,163,255,.7); cursor: not-allowed; opacity: 0.8; }
 .seat--sold { background: rgba(255,107,107,.08); border: 1px dashed rgba(255,107,107,.4); color: rgba(255,107,107,.5); cursor: not-allowed; opacity: 0.7; }
+.seat--pending { opacity: 0.5; cursor: wait; animation: seat-pending-pulse 0.9s ease-in-out infinite; }
+@keyframes seat-pending-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.7; } }
 
 .seat-summary { width: 100%; max-width: 880px; margin-top: 26px; padding: 24px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px; }
 .seat-summary__group { display: flex; flex-wrap: wrap; align-items: center; gap: 28px; }

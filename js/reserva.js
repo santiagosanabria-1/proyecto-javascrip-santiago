@@ -5,6 +5,8 @@
  * la reserva/compra y transición a la vista de ticket.
  */
 let reserva_flow = null;
+let reserva_confirmed = false; // true tras crear la reserva/compra: los asientos ya son "reserved"/"sold" y no hay nada que liberar
+let reserva_leaving = false; // true durante una navegación intencional (cancelar) -- evita liberar dos veces
 
 document.addEventListener("DOMContentLoaded", () => {
     const btnConfirm = document.getElementById("btn-confirm");
@@ -21,11 +23,53 @@ document.addEventListener("DOMContentLoaded", () => {
     prefillFromSession();
     initCardVisual();
     initDownloadTicket();
+    initCancelLink();
     btnConfirm.addEventListener("click", () => handleConfirm(btnConfirm, "purchase"));
 
     const reserveBtn = document.querySelector("[data-reserve-btn]");
     if (reserveBtn) reserveBtn.addEventListener("click", () => handleConfirm(reserveBtn, "reservation"));
+
+    // Red de seguridad: si cierran la pestaña o navegan afuera sin confirmar
+    // ni cancelar explícitamente, los asientos "selected" de esta sesión se
+    // liberan igual -- no deben quedar bloqueados por abandono.
+    window.addEventListener("beforeunload", () => {
+        if (!reserva_confirmed && !reserva_leaving) releaseReservaSeats(true);
+    });
 });
+
+/** "✕ Cancelar": libera los asientos que esta pestaña había tomado (vuelven
+ *  a estar disponibles para cualquiera) antes de volver al mapa de asientos. */
+function initCancelLink() {
+    const link = document.querySelector("[data-cancel-link]");
+    if (!link) return;
+    link.addEventListener("click", async (e) => {
+        e.preventDefault();
+        reserva_leaving = true;
+        await releaseReservaSeats(false);
+        window.location.href = link.getAttribute("href");
+    });
+}
+
+async function releaseReservaSeats(useBeacon) {
+    if (!reserva_flow?.seats?.length) return;
+    const ids = reserva_flow.seats.map((s) => s.functionSeatId);
+    if (useBeacon) {
+        ids.forEach((id) => {
+            try {
+                fetch(`${CONFIG.JSON_SERVER_URL}/functionSeats/${id}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ status: "available", holderToken: null, selectedAt: null }),
+                    keepalive: true
+                });
+            } catch {
+                /* best-effort: si falla, se autolimpia por vencimiento (ver CINE.getSeatMap) */
+            }
+        });
+        return;
+    }
+    await Promise.all(ids.map((id) => CINE.releaseFunctionSeat(id).catch(() => {})));
+}
 
 /** Si hay sesión activa, precarga nombre/email (siguen siendo editables) --
  *  el login es un plus, no un requisito: sin sesión el flujo manual de
@@ -44,6 +88,7 @@ function renderSummary(flow) {
         el.textContent = `${flow.seats.map((s) => s.seatCode).join(", ")} (${flow.quantity} ${flow.quantity === 1 ? "ticket" : "tickets"})`;
     });
     document.querySelectorAll("[data-checkout-total]").forEach((el) => (el.textContent = formatCurrency(flow.total)));
+    document.querySelectorAll("[data-checkout-unit-price]").forEach((el) => (el.textContent = formatCurrency(flow.price)));
     document.querySelectorAll("[data-checkout-time]").forEach((el) => (el.textContent = flow.time || "—"));
     document.querySelectorAll("[data-checkout-date]").forEach((el) => (el.textContent = formatDate(flow.date)));
     document.querySelectorAll("[data-checkout-room]").forEach(async (el) => {
@@ -221,9 +266,12 @@ async function handleConfirm(triggerBtn, mode) {
             triggerBtn.innerHTML = `<span class="spinner" style="width:16px;height:16px;"></span> Procesando...`;
         }
 
-        // 1) Re-validar disponibilidad REAL justo antes de confirmar.
+        // 1) Re-validar disponibilidad REAL justo antes de confirmar: el
+        // asiento debe seguir "selected" Y a nombre de ESTA pestaña (mismo
+        // holderToken) -- si otra sesión lo tomó después, se rechaza.
         const functionSeatIds = reserva_flow.seats.map((s) => s.functionSeatId);
-        const stillAvailable = await CINE.verifySeatsAvailable(reserva_flow.functionId, functionSeatIds);
+        const holderToken = reserva_flow.holderToken || SessionToken.get();
+        const stillAvailable = await CINE.verifySeatsAvailable(reserva_flow.functionId, functionSeatIds, holderToken);
 
         if (!stillAvailable) {
             showCheckoutError(
@@ -259,9 +307,13 @@ async function handleConfirm(triggerBtn, mode) {
                   })
                 : await CINE.createReservation(payload);
 
-        // 2) Marcar los asientos como vendidos/reservados en JSON Server.
-        await Promise.all(functionSeatIds.map((id) => CINE.updateFunctionSeat(id, newStatus)));
+        // 2) Marcar los asientos como vendidos/reservados en JSON Server (ya
+        // no están "en selección" de nadie, así que se limpia el holder).
+        await Promise.all(
+            functionSeatIds.map((id) => CINE.updateFunctionSeat(id, newStatus, { holderToken: null, selectedAt: null }))
+        );
 
+        reserva_confirmed = true; // los asientos ya son reserved/sold: nada que liberar al salir
         showSuccessView(record, mode);
         FlowStore.clear();
     } catch (err) {

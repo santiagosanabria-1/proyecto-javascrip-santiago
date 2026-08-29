@@ -46,3 +46,28 @@ const AuthStore = {
         localStorage.removeItem(AUTH_KEY);
     }
 };
+
+/**
+ * Identifica esta pestaña/sesión de navegación (no al usuario logueado --
+ * funciona igual sin sesión) para poder distinguir "yo seleccioné este
+ * asiento" de "otra persona lo seleccionó". Es lo que hace que dos personas
+ * NUNCA puedan terminar comprando el mismo asiento: si ambas lo seleccionan,
+ * la segunda petición gana en JSON Server y el token de la primera deja de
+ * coincidir, así que su confirmación se rechaza en verifySeatsAvailable.
+ */
+const SESSION_TOKEN_KEY = "cineverse_session_token";
+
+const SessionToken = {
+    get() {
+        try {
+            let token = sessionStorage.getItem(SESSION_TOKEN_KEY);
+            if (!token) {
+                token = `tok_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+                sessionStorage.setItem(SESSION_TOKEN_KEY, token);
+            }
+            return token;
+        } catch {
+            return "tok_fallback";
+        }
+    }
+};
