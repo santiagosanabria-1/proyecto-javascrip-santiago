@@ -54,6 +54,7 @@ function renderMovie(movie, credits, videos) {
     const genresEl = document.querySelector("[data-detail-genres]");
     const overview = document.querySelector("[data-detail-overview]");
     const directorEl = document.querySelector("[data-detail-director]");
+    const releaseEl = document.querySelector("[data-detail-release]");
     const trailerBtn = document.querySelector("[data-detail-trailer]");
 
     if (backdrop) backdrop.style.backgroundImage = `url('${TMDB.imageUrl(movie.backdrop_path, "w1280")}')`;
@@ -76,6 +77,7 @@ function renderMovie(movie, credits, videos) {
 
     const director = TMDB.getDirector(credits);
     if (directorEl) directorEl.textContent = director ? director.name : "No disponible";
+    if (releaseEl) releaseEl.textContent = formatReleaseDate(movie.release_date);
 
     const trailerKey = TMDB.pickTrailer(videos);
     if (trailerBtn) {
@@ -87,6 +89,18 @@ function renderMovie(movie, credits, videos) {
     }
 
     if (typeof Animations !== "undefined") Animations.initDetailReveal();
+}
+
+/** Fecha de estreno completa ("7 de noviembre de 2014"), a diferencia del
+ *  formatDate corto (día+mes) que usan las funciones del cine. */
+function formatReleaseDate(dateStr) {
+    if (!dateStr) return "No disponible";
+    const [year, month, day] = dateStr.split("-");
+    const months = [
+        "enero", "febrero", "marzo", "abril", "mayo", "junio",
+        "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
+    ];
+    return `${parseInt(day, 10)} de ${months[parseInt(month, 10) - 1]} de ${year}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -234,7 +248,14 @@ async function loadRatings() {
             .reverse()
             .map((r) => {
                 const stars = "★".repeat(r.rating) + "☆".repeat(5 - r.rating);
-                return `<div class="rating-item"><div class="rating-item__stars">${stars}</div>${r.comment ? `<p class="rating-item__comment">${r.comment}</p>` : ""}</div>`;
+                const author = r.userName ? r.userName : "Anónimo";
+                return `<div class="rating-item">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span class="rating-item__stars">${stars}</span>
+                        <span style="font-family:var(--font-label);font-size:11.5px;color:var(--text-muted);">${author}</span>
+                    </div>
+                    ${r.comment ? `<p class="rating-item__comment">${r.comment}</p>` : ""}
+                </div>`;
             })
             .join("");
         if (typeof Animations !== "undefined") Animations.initRevealGrid(list, ".rating-item");
@@ -247,19 +268,46 @@ function initRatingForm() {
     const form = document.querySelector("[data-rating-form]");
     if (!form) return;
 
+    // Si hay sesión activa, el nombre viene fijo del login (no simulado ni
+    // editable) -- sin sesión, cualquiera puede opinar escribiendo su nombre.
+    const nameInput = form.querySelector("[data-rating-name]");
+    const sessionUser = AuthStore.get();
+    if (nameInput && sessionUser) {
+        nameInput.value = sessionUser.name;
+        nameInput.readOnly = true;
+    }
+
     form.addEventListener("submit", async (e) => {
         e.preventDefault();
         const stars = form.querySelector("[data-rating-value]");
         const comment = form.querySelector("[data-rating-comment]");
         const rating = parseInt(stars?.value || "0", 10);
+        const userName = (nameInput?.value || "").trim();
+
+        if (!userName) {
+            nameInput?.focus();
+            showToast("Escribe tu nombre para poder publicar la valoración.");
+            return;
+        }
         if (!rating) {
             showToast("Selecciona una valoración de 1 a 5 estrellas.");
             return;
         }
         try {
-            await CINE.createRating({ tmdbId: pelicula_tmdbId, rating, comment: comment?.value?.trim() || "" });
+            // tmdbId se guarda como número (igual que en "functions"/"billboard")
+            // -- JSON Server filtra por tipo, así que un tmdbId guardado como
+            // string nunca haría match con "?tmdbId=..." y la valoración
+            // quedaría invisible para siempre aunque sí se hubiera guardado.
+            await CINE.createRating({
+                tmdbId: Number(pelicula_tmdbId),
+                userId: sessionUser ? sessionUser.id : null,
+                userName,
+                rating,
+                comment: comment?.value?.trim() || ""
+            });
             if (comment) comment.value = "";
             if (stars) stars.value = "0";
+            if (nameInput && !sessionUser) nameInput.value = "";
             showToast("¡Gracias por tu valoración!");
             loadRatings();
         } catch {
