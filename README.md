@@ -66,6 +66,12 @@ la app usa `fetch`), por ejemplo:
 npx serve .
 ```
 
+El `serve.json` incluido en el repo es necesario: sin él, `serve` reescribe
+solo (con un 301) rutas como `funcion.html?functionId=3` a `/funcion`,
+**descartando la query string** de la que depende toda la navegación de la
+app (`?id=`, `?functionId=`). Con `serve.json` (`"cleanUrls": false`) sirve
+cada `.html` tal cual, con su query string intacta.
+
 ⚠️ **No uses la extensión "Live Server" de VS Code para esto** (o, si la
 usás, con `.vscode/settings.json` ya incluido en el repo, que la
 configura correctamente). Live Server recarga la pestaña completa apenas
