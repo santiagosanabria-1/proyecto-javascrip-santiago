@@ -142,7 +142,12 @@ async function loadFunctions() {
 
     showLoading(showtimeGrid, "Cargando funciones...");
     try {
-        const functions = await CINE.getFunctionsByMovie(pelicula_tmdbId);
+        const allFunctions = await CINE.getFunctionsByMovie(pelicula_tmdbId);
+        // Una función con fecha ya pasada (el reloj del sistema avanzó, o el
+        // seed no se volvió a correr) no debe ofrecerse para comprar -- un
+        // cine real no vende entradas para una función de ayer.
+        const todayStr = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD en horario local
+        const functions = allFunctions.filter((fn) => fn.date >= todayStr);
         if (!functions.length) {
             if (dateList) dateList.innerHTML = "";
             showEmpty(showtimeGrid, "Esta película no tiene funciones programadas por ahora.");
@@ -248,13 +253,14 @@ async function loadRatings() {
             .reverse()
             .map((r) => {
                 const stars = "★".repeat(r.rating) + "☆".repeat(5 - r.rating);
-                const author = r.userName ? r.userName : "Anónimo";
+                const author = escapeHtml(r.userName || "Anónimo");
+                const comment = escapeHtml(r.comment || "");
                 return `<div class="rating-item">
                     <div style="display:flex;justify-content:space-between;align-items:center;">
                         <span class="rating-item__stars">${stars}</span>
                         <span style="font-family:var(--font-label);font-size:11.5px;color:var(--text-muted);">${author}</span>
                     </div>
-                    ${r.comment ? `<p class="rating-item__comment">${r.comment}</p>` : ""}
+                    ${comment ? `<p class="rating-item__comment">${comment}</p>` : ""}
                 </div>`;
             })
             .join("");

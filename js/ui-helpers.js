@@ -46,6 +46,18 @@ function formatDate(dateStr) {
     return `${day} ${months[parseInt(month, 10) - 1]}`;
 }
 
+/**
+ * Escapa texto antes de insertarlo en innerHTML. Imprescindible para todo
+ * texto que haya escrito una persona (nombre, comentario de valoración):
+ * sin esto, un comentario como `<img src=x onerror=alert(1)>` se ejecutaba
+ * tal cual para cualquiera que viera esa película (XSS persistente
+ * encontrado en la auditoría) -- textContent no es una opción ahí porque
+ * ese texto va mezclado con markup real dentro de un template string.
+ */
+function escapeHtml(text) {
+    return String(text ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
+}
+
 function getQueryParam(name) {
     return new URLSearchParams(window.location.search).get(name);
 }

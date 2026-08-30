@@ -96,11 +96,25 @@ const CINE = (() => {
     /**
      * Marca un asiento como "selected" (elegido, todavía no confirmado) para
      * ESTA función, atado a `holderToken` (identifica la pestaña/sesión que
-     * lo tomó). Es la pieza que faltaba para que la relación función+asiento
-     * sea real de verdad: dos personas no pueden "elegir" el mismo asiento
-     * al mismo tiempo, porque el segundo PATCH ve que ya no está disponible.
+     * lo tomó). Antes de escribir, relee el estado actual: JSON Server no
+     * tiene compare-and-swap atómico, así que esto no elimina la ventana de
+     * carrera por completo (dos GET simultáneos podrían ver "available" los
+     * dos), pero sí evita el caso mucho más común y grave que se encontró en
+     * la auditoría: un segundo click sobre un asiento que otra sesión ya
+     * tiene tomado (aunque sea milisegundos después) pisaba su holderToken
+     * sin ningún aviso. Con esto, ese PATCH se rechaza en el cliente en vez
+     * de sobreescribir en silencio.
      */
     async function selectFunctionSeat(functionSeatId, holderToken) {
+        const current = await getById("functionSeats", functionSeatId);
+        const heldByOther =
+            current && current.status === "selected" && current.holderToken && current.holderToken !== holderToken && !isStaleSelection(current);
+        const takenByOther = current && (current.status === "reserved" || current.status === "sold");
+        if (heldByOther || takenByOther) {
+            const err = new Error("El asiento ya no está disponible.");
+            err.code = "SEAT_TAKEN";
+            throw err;
+        }
         return updateFunctionSeat(functionSeatId, "selected", { holderToken, selectedAt: new Date().toISOString() });
     }
 
@@ -125,9 +139,17 @@ const CINE = (() => {
                 const fs = statusBySeatId.get(String(seat.id));
                 if (fs && isStaleSelection(fs)) {
                     releaseFunctionSeat(fs.id).catch(() => {}); // auto-limpieza, best-effort
-                    return { ...seat, functionSeatId: fs.id, status: "available" };
+                    return { ...seat, functionSeatId: fs.id, status: "available", holderToken: null };
                 }
-                return { ...seat, functionSeatId: fs ? fs.id : null, status: fs ? fs.status : "available" };
+                return {
+                    ...seat,
+                    functionSeatId: fs ? fs.id : null,
+                    status: fs ? fs.status : "available",
+                    // El llamador la usa para distinguir "esto lo elegí yo" (sigue
+                    // interactivo) de "lo eligió otra persona ahora mismo" (debe
+                    // verse y comportarse como ocupado, no como disponible).
+                    holderToken: fs ? fs.holderToken || null : null
+                };
             });
     }
 

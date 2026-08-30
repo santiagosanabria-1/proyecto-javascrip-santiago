@@ -75,7 +75,7 @@ function ticketCode(t) {
 }
 
 function rowMarkup(t) {
-    const title = t.movie ? t.movie.title : "Película";
+    const title = escapeHtml(t.movie ? t.movie.title : "Película");
     const poster = t.movie ? TMDB.imageUrl(t.movie.poster_path, "w185") : null;
     const isPurchase = t.kind === "purchase";
     const seats = (t.seats || []).map((s) => s.seatCode).join(", ");
@@ -110,9 +110,11 @@ function rowMarkup(t) {
 // la información se vea (y se imprima) exactamente igual en los dos lugares.
 // ---------------------------------------------------------------------------
 function ticketMarkup(t) {
-    const title = t.movie ? t.movie.title : "Película";
+    const title = escapeHtml(t.movie ? t.movie.title : "Película");
     const isPurchase = t.kind === "purchase";
-    const seats = (t.seats || []).map((s) => s.seatCode).join(", ");
+    const seats = escapeHtml((t.seats || []).map((s) => s.seatCode).join(", "));
+    const buyerName = escapeHtml(t.userName || "—");
+    const buyerEmail = escapeHtml(t.email || "—");
 
     return `
         <div class="ticket">
@@ -126,8 +128,8 @@ function ticketMarkup(t) {
                     <div><span class="k">HORA</span><span class="v">${t.fn ? t.fn.time : "—"}</span></div>
                     <div><span class="k">SALA</span><span class="v">${t.room ? t.room.name.toUpperCase() : "—"}</span></div>
                     <div><span class="k">ASIENTOS</span><span class="v">${seats || "—"}</span></div>
-                    <div><span class="k">COMPRADOR</span><span class="v">${t.userName || "—"}</span></div>
-                    <div><span class="k">CORREO</span><span class="v">${t.email || "—"}</span></div>
+                    <div><span class="k">COMPRADOR</span><span class="v">${buyerName}</span></div>
+                    <div><span class="k">CORREO</span><span class="v">${buyerEmail}</span></div>
                     ${isPurchase && t.paymentMethod ? `<div><span class="k">PAGO CON</span><span class="v">${t.paymentMethod.brand} •••• ${t.paymentMethod.last4}</span></div>` : ""}
                     ${isPurchase ? `<div><span class="k">TOTAL</span><span class="v" style="color:var(--gold);">${formatCurrency(t.total)}</span></div>` : ""}
                 </div>
