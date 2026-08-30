@@ -66,6 +66,16 @@ la app usa `fetch`), por ejemplo:
 npx serve .
 ```
 
+⚠️ **No uses la extensión "Live Server" de VS Code para esto** (o, si la
+usás, con `.vscode/settings.json` ya incluido en el repo, que la
+configura correctamente). Live Server recarga la pestaña completa apenas
+detecta que cambió un archivo en la carpeta que sirve — y `db.json`
+cambia en cada acción real contra el cine (elegir un asiento, reservar,
+comprar), porque `json-server --watch` lo reescribe en disco al
+instante. Sin la exclusión, el síntoma es exactamente "elijo un asiento y
+se reinicia toda la página": no es un bug de la app, es Live Server
+recargando por su cuenta al ver el `db.json` recién escrito.
+
 Antes de correrlo, completar `CONFIG.TMDB_API_KEY` en `js/config.js` con
 una API Key propia de TMDB (gratuita en
 https://www.themoviedb.org/settings/api).
