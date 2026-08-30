@@ -55,16 +55,17 @@ async function releaseReservaSeats(useBeacon) {
     const ids = reserva_flow.seats.map((s) => s.functionSeatId);
     if (useBeacon) {
         ids.forEach((id) => {
-            try {
-                fetch(`${CONFIG.JSON_SERVER_URL}/functionSeats/${id}`, {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ status: "available", holderToken: null, selectedAt: null }),
-                    keepalive: true
-                });
-            } catch {
+            // .catch() es obligatorio acá: fetch() rechaza la promesa de forma
+            // asíncrona ante un fallo de red, un try/catch alrededor no lo
+            // atrapa y quedaba como unhandled promise rejection en consola.
+            fetch(`${CONFIG.JSON_SERVER_URL}/functionSeats/${id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: "available", holderToken: null, selectedAt: null }),
+                keepalive: true
+            }).catch(() => {
                 /* best-effort: si falla, se autolimpia por vencimiento (ver CINE.getSeatMap) */
-            }
+            });
         });
         return;
     }
@@ -282,6 +283,22 @@ async function handleConfirm(triggerBtn, mode) {
             return;
         }
 
+        // El precio NUNCA se toma de `reserva_flow` (sessionStorage/memoria
+        // del cliente, editable desde la consola) -- se recalcula desde el
+        // precio real de la función en JSON Server. Sin esto, cambiar
+        // `reserva_flow.total` antes de confirmar dejaba comprar cualquier
+        // cantidad de entradas por el precio que el cliente quisiera
+        // (encontrado y verificado en la auditoría).
+        const realFunction = await CINE.getFunction(reserva_flow.functionId);
+        if (!realFunction) {
+            showCheckoutError("La función seleccionada ya no existe. Vuelve a elegir un horario.");
+            triggerBtn.disabled = false;
+            triggerBtn.innerHTML = originalLabel;
+            return;
+        }
+        const unitPrice = realFunction.price;
+        const total = unitPrice * reserva_flow.seats.length;
+
         const sessionUser = AuthStore.get();
         const payload = {
             userId: sessionUser ? sessionUser.id : null,
@@ -299,8 +316,8 @@ async function handleConfirm(triggerBtn, mode) {
             mode === "purchase"
                 ? await CINE.createPurchase({
                       ...payload,
-                      unitPrice: reserva_flow.price,
-                      total: Number(reserva_flow.total),
+                      unitPrice,
+                      total,
                       // Nunca se guarda el número completo ni el CVV -- solo lo
                       // que cualquier pasarela real devolvería para un recibo.
                       paymentMethod: { brand: card.brand, last4: card.last4 }
@@ -314,7 +331,7 @@ async function handleConfirm(triggerBtn, mode) {
         );
 
         reserva_confirmed = true; // los asientos ya son reserved/sold: nada que liberar al salir
-        showSuccessView(record, mode);
+        showSuccessView(record, mode, total);
         FlowStore.clear();
     } catch (err) {
         console.error(err);
@@ -324,7 +341,7 @@ async function handleConfirm(triggerBtn, mode) {
     }
 }
 
-function showSuccessView(record, mode) {
+function showSuccessView(record, mode, realTotal) {
     const viewCheckout = document.getElementById("view-checkout");
     const viewSuccess = document.getElementById("view-success");
     if (!viewCheckout || !viewSuccess) return;
@@ -339,7 +356,9 @@ function showSuccessView(record, mode) {
     const emailEl = document.querySelector("[data-ticket-email]");
     if (emailEl) emailEl.textContent = record.email || "—";
     const totalEl = document.querySelector("[data-ticket-total]");
-    if (totalEl) totalEl.textContent = formatCurrency(reserva_flow.total);
+    // El total mostrado es el mismo que se guardó (precio real recalculado
+    // en el servidor), nunca el que traía `reserva_flow` del cliente.
+    if (totalEl) totalEl.textContent = formatCurrency(record.total ?? realTotal);
     const paymentRow = document.querySelector("[data-ticket-payment-row]");
     const paymentEl = document.querySelector("[data-ticket-payment]");
     if (mode === "purchase" && record.paymentMethod) {

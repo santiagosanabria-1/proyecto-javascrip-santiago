@@ -4,7 +4,6 @@
  * a api.themoviedb.org.
  */
 const TMDB = (() => {
-    let genreCache = null;
     // Caché en memoria de solo-sesión: evita repetir /movie/:id y
     // /movie/:id/credits cuando el usuario vuelve a pasar por la misma
     // película (cards visitadas, back/forward, cambio de fecha, etc.).
@@ -61,23 +60,6 @@ const TMDB = (() => {
         return path ? `${CONFIG.TMDB_IMAGE_BASE}/${size}${path}` : null;
     }
 
-    async function getGenres() {
-        if (genreCache) return genreCache;
-        const data = await request("/genre/movie/list");
-        genreCache = data.genres || [];
-        return genreCache;
-    }
-
-    async function getNowPlaying(page = 1) {
-        const data = await request("/movie/now_playing", { page });
-        return { results: data.results || [], totalPages: data.total_pages || 1 };
-    }
-
-    async function getPopularMovies(page = 1) {
-        const data = await request("/movie/popular", { page });
-        return { results: data.results || [], totalPages: data.total_pages || 1 };
-    }
-
     /**
      * Búsqueda paginada. Acepta un AbortSignal para que el llamador pueda
      * cancelar una búsqueda en vuelo si el usuario sigue escribiendo
@@ -86,12 +68,6 @@ const TMDB = (() => {
     async function searchMovies(query, page = 1, signal) {
         if (!query || !query.trim()) return { results: [], totalPages: 0 };
         const data = await request("/search/movie", { query: query.trim(), page }, signal);
-        return { results: data.results || [], totalPages: data.total_pages || 1 };
-    }
-
-    /** Catálogo por género real (paginado), vía /discover/movie. */
-    async function discoverByGenre(genreId, page = 1) {
-        const data = await request("/discover/movie", { with_genres: genreId, page, sort_by: "popularity.desc" });
         return { results: data.results || [], totalPages: data.total_pages || 1 };
     }
 
@@ -148,10 +124,6 @@ const TMDB = (() => {
 
     return {
         imageUrl,
-        getGenres,
-        getNowPlaying,
-        getPopularMovies,
-        discoverByGenre,
         searchMovies,
         getMovieDetails,
         getMovieCredits,
