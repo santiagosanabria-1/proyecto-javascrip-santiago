@@ -9,7 +9,12 @@ db.json
 # Sistema operativo / editor
 .DS_Store
 Thumbs.db
-.vscode/
+# Se versiona .vscode/settings.json a propósito: es lo que evita que la
+# extensión Live Server entre en un loop de recargas (ver README, sección
+# "Cómo ejecutarlo") -- el resto de .vscode/ (workspace, launch personal)
+# sigue ignorado.
+.vscode/*
+!.vscode/settings.json
 
 # Logs
 *.log
