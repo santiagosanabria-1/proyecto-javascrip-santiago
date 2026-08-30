@@ -70,11 +70,35 @@ async function loadSeatMap(seatPanel) {
 
         const seatMapData = await CINE.getSeatMap(fn.id, room.id);
         renderSeatMap(seatPanel, seatMapData, room);
+        restoreOwnSelection(seatMapData);
         initSummary();
     } catch (err) {
         console.error(err);
         renderFatal(seatPanel, err.message || "No se pudo cargar el mapa de asientos.");
     }
+}
+
+/**
+ * Si esta misma pestaña ya tenía asientos "selected" a su nombre (recargó
+ * la página sin haber confirmado ni abandonado) los recupera en
+ * `funcion_selected` -- si no, quedarían marcados como propios en el mapa
+ * (ver renderSeatMap) pero invisibles para el resumen/contador de tickets.
+ */
+function restoreOwnSelection(seatMapData) {
+    const myToken = SessionToken.get();
+    const mine = seatMapData.filter((seat) => seat.status === "selected" && seat.holderToken === myToken);
+    if (!mine.length) return;
+    funcion_selected = mine.map((seat) => ({
+        seatId: String(seat.id),
+        functionSeatId: seat.functionSeatId,
+        seatCode: seat.seatCode,
+        location: seat.location,
+        row: seat.row,
+        number: seat.number
+    }));
+    funcion_desiredQuantity = Math.max(funcion_desiredQuantity, mine.length);
+    const valueEl = document.querySelector("[data-qty-value]");
+    if (valueEl) valueEl.textContent = funcion_desiredQuantity;
 }
 
 async function updatePageMovieInfo(fn, room) {
@@ -144,16 +168,19 @@ async function releaseSelectedSeats(useBeacon) {
     funcion_selected = [];
     if (useBeacon) {
         ids.forEach((id) => {
-            try {
-                fetch(`${CONFIG.JSON_SERVER_URL}/functionSeats/${id}`, {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ status: "available", holderToken: null, selectedAt: null }),
-                    keepalive: true
-                });
-            } catch {
+            // fetch() nunca lanza de forma síncrona ante un fallo de red -- devuelve
+            // una promesa rechazada. Sin este .catch() quedaba como una promise
+            // rejection sin manejar en consola cada vez que el PATCH fallaba
+            // (JSON Server caído, tab cerrándose de golpe): el try/catch de
+            // alrededor no la atrapaba porque el rechazo es asíncrono.
+            fetch(`${CONFIG.JSON_SERVER_URL}/functionSeats/${id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: "available", holderToken: null, selectedAt: null }),
+                keepalive: true
+            }).catch(() => {
                 /* best-effort: si falla, se autolimpia por vencimiento (ver getSeatMap) */
-            }
+            });
         });
         return;
     }
@@ -174,11 +201,18 @@ function renderSeatMap(seatPanel, seats, room) {
             const rowSeats = rows[letter].sort((a, b) => a.number - b.number);
             const left = rowSeats.slice(0, half);
             const right = rowSeats.slice(half);
+            const myToken = SessionToken.get();
             const seatBtn = (seat) => {
-                const isTaken = seat.status === "reserved" || seat.status === "sold";
-                const stateClass = isTaken ? `seat--${seat.status}` : "seat--available";
-                const content = isTaken ? SEAT_ICONS[seat.status] : seat.seatCode;
-                const label = SEAT_LABELS[seat.status] || "disponible";
+                // Un asiento "selected" por OTRA sesión (dentro de la ventana de
+                // 10 minutos) debe verse y comportarse como ocupado -- antes de
+                // esta corrección se pintaba igual que uno disponible y se podía
+                // clickear, robándole la selección a quien lo tenía tomado.
+                const heldByOther = seat.status === "selected" && seat.holderToken !== myToken;
+                const mine = seat.status === "selected" && seat.holderToken === myToken;
+                const isTaken = seat.status === "reserved" || seat.status === "sold" || heldByOther;
+                const stateClass = seat.status === "reserved" || seat.status === "sold" ? `seat--${seat.status}` : heldByOther ? "seat--held" : mine ? "seat--selected" : "seat--available";
+                const content = seat.status === "reserved" || seat.status === "sold" ? SEAT_ICONS[seat.status] : heldByOther ? "…" : mine ? SEAT_ICONS.selected : seat.seatCode;
+                const label = heldByOther ? "siendo elegido por otra persona" : SEAT_LABELS[seat.status] || "disponible";
                 return `<button class="seat ${stateClass}"
                     data-seat-id="${seat.id}" data-function-seat-id="${seat.functionSeatId}"
                     data-seat-code="${seat.seatCode}" data-location="${seat.location}"
@@ -264,10 +298,10 @@ async function toggleSeat(btn) {
         renderSummary();
     } catch (err) {
         btn.classList.remove("seat--pending");
-        if (err.message === "taken") {
+        if (err.message === "taken" || err.code === "SEAT_TAKEN") {
             showToast(`El asiento ${btn.dataset.seatCode} ya no está disponible. Alguien más lo tomó justo ahora.`, "error");
-            btn.classList.add("seat--reserved");
-            btn.innerHTML = SEAT_ICONS.reserved;
+            btn.classList.add("seat--held");
+            btn.innerHTML = "…";
             btn.disabled = true;
         } else {
             console.error(err);
