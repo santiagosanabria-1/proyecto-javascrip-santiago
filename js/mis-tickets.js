@@ -1,7 +1,7 @@
 /**
  * js/mis-tickets.js
  * Lógica de mis-tickets.html: historial real de compras/reservas del
- * usuario logueado (JSON Server, filtrado por userId), con un botón para
+ * usuario logueado (localStorage, filtrado por userId), con un botón para
  * ver el ticket completo (mismo componente `.ticket` que reserva.html,
  * imprimible/descargable con el mismo mecanismo).
  */
@@ -43,7 +43,7 @@ async function loadTickets(list, user) {
 
         // Se hidrata (película + sala + función) UNA vez por ticket y se
         // guarda en `enriched`: la fila y el modal "Ver ticket" reutilizan
-        // los mismos datos, sin volver a pedirlos a TMDB/JSON Server.
+        // los mismos datos, sin volver a pedirlos a TMDB/localStorage.
         const enriched = await Promise.all(all.map(hydrateTicket));
         list.innerHTML = enriched.map(rowMarkup).join("");
 

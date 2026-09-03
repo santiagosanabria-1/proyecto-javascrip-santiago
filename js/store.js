@@ -52,7 +52,7 @@ const AuthStore = {
  * funciona igual sin sesión) para poder distinguir "yo seleccioné este
  * asiento" de "otra persona lo seleccionó". Es lo que hace que dos personas
  * NUNCA puedan terminar comprando el mismo asiento: si ambas lo seleccionan,
- * la segunda petición gana en JSON Server y el token de la primera deja de
+ * la segunda escritura gana en localStorage y el token de la primera deja de
  * coincidir, así que su confirmación se rechaza en verifySeatsAvailable.
  */
 const SESSION_TOKEN_KEY = "cineverse_session_token";

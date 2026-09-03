@@ -2,12 +2,5 @@
   "name": "cineverse",
   "version": "1.0.0",
   "private": true,
-  "description": "CINEVERSE - Frontend vanilla (GSAP + ScrollTrigger) conectado a TMDB + JSON Server",
-  "scripts": {
-    "seed": "node scripts/seed.js",
-    "server": "json-server --watch db.json --port 4000"
-  },
-  "devDependencies": {
-    "json-server": "^1.0.0-beta.15"
-  }
+  "description": "CINEVERSE - Frontend vanilla (GSAP + ScrollTrigger) conectado a TMDB, con datos propios del cine persistidos en localStorage"
 }
