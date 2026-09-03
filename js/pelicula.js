@@ -1,7 +1,7 @@
 /**
  * js/pelicula.js
  * Lógica de pelicula.html: detalle real de TMDB (ficha, reparto, trailer)
- * + funciones propias del cine (JSON Server) + valoraciones.
+ * + funciones propias del cine (localStorage) + valoraciones.
  */
 let pelicula_tmdbId = null;
 let pelicula_functionsByDate = {};
@@ -133,7 +133,7 @@ function renderCast(credits) {
 }
 
 // ---------------------------------------------------------------------------
-// Funciones (JSON Server) -> llevan a funcion.html?functionId=ID
+// Funciones (localStorage) -> llevan a funcion.html?functionId=ID
 // ---------------------------------------------------------------------------
 async function loadFunctions() {
     const dateList = document.querySelector("[data-date-list]");
@@ -236,7 +236,7 @@ async function renderShowtimes(container, functionsOfDay) {
 }
 
 // ---------------------------------------------------------------------------
-// Valoraciones (JSON Server)
+// Valoraciones (localStorage)
 // ---------------------------------------------------------------------------
 async function loadRatings() {
     const list = document.querySelector("[data-ratings-list]");
@@ -301,7 +301,7 @@ function initRatingForm() {
         }
         try {
             // tmdbId se guarda como número (igual que en "functions"/"billboard")
-            // -- JSON Server filtra por tipo, así que un tmdbId guardado como
+            // -- LocalDB.query compara con String(), así que un tmdbId guardado como
             // string nunca haría match con "?tmdbId=..." y la valoración
             // quedaría invisible para siempre aunque sí se hubiera guardado.
             await CINE.createRating({

@@ -8,13 +8,13 @@ Plataforma de cine premium construida en **JavaScript vanilla puro**: cartelera 
 ficha de película con datos de [TMDB](https://www.themoviedb.org/), mapa de asientos
 interactivo, reservas y compras con **prevención real de doble venta**, pasarela de
 pago simulada con tarjeta 3D, valoraciones, autenticación y un historial de tickets
-imprimibles — todo persistido contra un backend simulado con **JSON Server**.
+imprimibles — todo persistido en **localStorage**, sin backend ni servidor propio.
 
 [![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)](#)
 [![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white)](#)
 [![JavaScript](https://img.shields.io/badge/JavaScript-ES6%2B-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)](#)
 [![TMDB API](https://img.shields.io/badge/TMDB-API-01D277?style=for-the-badge&logo=themoviedatabase&logoColor=white)](https://www.themoviedb.org/documentation/api)
-[![JSON Server](https://img.shields.io/badge/JSON%20Server-1.0.0--beta-black?style=for-the-badge&logo=json&logoColor=white)](https://github.com/typicode/json-server)
+[![localStorage](https://img.shields.io/badge/Storage-localStorage-black?style=for-the-badge&logo=googlechrome&logoColor=white)](#)
 [![GSAP](https://img.shields.io/badge/GSAP-ScrollTrigger-88CE02?style=for-the-badge&logo=greensock&logoColor=white)](https://gsap.com/)
 
 [![Última release](https://img.shields.io/github/v/tag/santiagosanabria-1/proyecto-javascrip-santiago?label=%C3%BAltima%20release&style=flat-square)](https://github.com/santiagosanabria-1/proyecto-javascrip-santiago/tags)
@@ -40,7 +40,7 @@ imprimibles — todo persistido contra un backend simulado con **JSON Server**.
 11. [Autenticación](#-11-autenticación)
 12. [Mis tickets](#-12-mis-tickets)
 13. [Integración con TMDB](#-13-integración-con-tmdb)
-14. [JSON Server](#-14-json-server)
+14. [Almacenamiento local (localStorage)](#-14-almacenamiento-local-localstorage)
 15. [Responsive](#-15-responsive)
 16. [Animaciones y UX](#-16-animaciones-y-ux)
 17. [Manejo de errores](#-17-manejo-de-errores)
@@ -75,8 +75,8 @@ de venta de entradas real:
   (funciones, salas, precios) sin mezclar sus responsabilidades?
 
 Es un proyecto de alcance académico, pensado para practicar arquitectura de frontend,
-consumo de APIs REST, modelado de datos relacional (aunque el "backend" sea un archivo
-JSON) y control de concurrencia — no un sistema listo para producción real (ver
+consumo de APIs REST, modelado de datos relacional (aunque la "base de datos" viva en
+`localStorage`) y control de concurrencia — no un sistema listo para producción real (ver
 [Autenticación](#-11-autenticación) y [Decisiones técnicas](#-18-decisiones-técnicas)
 para las limitaciones asumidas a propósito).
 
@@ -93,7 +93,7 @@ para las limitaciones asumidas a propósito).
 ✅ Funciones reales por película (fecha, hora, sala, precio) — nunca fechas pasadas
 ✅ Mapa de asientos dinámico por sala, con 5 estados posibles
 ✅ Selector de cantidad de tickets con validación estricta (tickets == asientos)
-✅ Selección múltiple de asientos persistida en tiempo real contra JSON Server
+✅ Selección múltiple de asientos persistida en tiempo real en localStorage
 ✅ Anti-doble-venta real: token de sesión + expiración + revalidación final
 ✅ Reserva sin pago, o compra con pasarela simulada (tarjeta 3D, flip real en el CVV)
 ✅ Ticket digital imprimible/descargable con toda la información de la compra
@@ -104,7 +104,7 @@ para las limitaciones asumidas a propósito).
 ✅ Responsive verificado en 5 resoluciones distintas (375px → 1920px)
 ```
 
-> No incluye (a propósito, ver [Roadmap](#-23-roadmap)): backend/base de datos real,
+> No incluye (a propósito, ver [Roadmap](#-23-roadmap)): backend/base de datos remota,
 > pasarela de pago real, panel administrativo, tests automatizados ni despliegue.
 
 ---
@@ -117,10 +117,9 @@ para las limitaciones asumidas a propósito).
 | **CSS3** | — | Sistema de diseño con custom properties, Grid/Flexbox, `@media print` para el ticket, `prefers-reduced-motion` |
 | **JavaScript (vanilla, ES6+)** | — | Toda la lógica de cliente: sin framework, sin bundler, sin transpilación |
 | **[TMDB API](https://www.themoviedb.org/documentation/api)** | v3 REST (acepta API Key v3 o Read Access Token v4) | Catálogo de películas, detalle, reparto, director, trailers, búsqueda |
-| **[JSON Server](https://github.com/typicode/json-server)** | `^1.0.0-beta.15` (`package.json`) | Backend REST simulado: salas, funciones, asientos, reservas, compras, valoraciones, usuarios |
+| **Web Storage API** (`localStorage`) | Nativa del navegador | "Backend" del cine: salas, funciones, asientos, reservas, compras, valoraciones, usuarios (`js/api/localdb.js`) |
 | **[GSAP](https://gsap.com/) + ScrollTrigger** | `3.12.5` (vía CDN — no está en `package.json`) | Animaciones de scroll, reveals, tilt 3D del póster, flip 3D de la tarjeta de pago |
 | **Web Crypto API** (`crypto.subtle`) | Nativa del navegador | `SHA-256` para hashear contraseñas antes de guardarlas |
-| **Node.js / npm** | — | Solo para correr `json-server` y el script de seed — no hay proceso de build |
 
 No se usa ningún framework de frontend (React, Vue, Angular), ni CSS preprocesado, ni
 TypeScript: es una decisión explícita del proyecto, no una limitación técnica.
@@ -129,29 +128,30 @@ TypeScript: es una decisión explícita del proyecto, no una limitación técnic
 
 ## 🏗️ 4. Arquitectura
 
-CINEVERSE es un **frontend 100% estático** que habla con dos fuentes de datos
-externas, cada una detrás de un único módulo "puerta de entrada" — ningún otro
-archivo hace `fetch()` directo a TMDB o a JSON Server:
+CINEVERSE es un **frontend 100% estático, sin backend propio**: la única fuente de
+datos externa es TMDB, siempre detrás de su módulo "puerta de entrada" — ningún otro
+archivo hace `fetch()` directo. Los datos propios del cine viven enteramente en el
+navegador, en `localStorage`, vía `js/api/localdb.js`:
 
 ```mermaid
 flowchart LR
     U(("👤 Usuario")) --> FE["Frontend estático<br/>HTML + CSS + JS vanilla<br/>(6 páginas, sin build)"]
 
     FE -->|"fetch() solo vía<br/>js/api/tmdb.js"| TMDB[("🎞️ TMDB API")]
-    FE -->|"fetch() solo vía<br/>js/api/cine.js"| JSON[("🗄️ JSON Server<br/>(db.json)")]
+    FE -->|"lee/escribe vía<br/>js/api/cine.js"| LDB[("🗄️ localStorage<br/>(js/api/localdb.js)")]
 
     TMDB --> M["Películas · reparto · director<br/>trailers · búsqueda paginada"]
-    JSON --> D["billboard · rooms · seats<br/>functions · functionSeats<br/>reservations · purchases<br/>ratings · users"]
+    LDB --> D["billboard · rooms · seats<br/>functions · functionSeats<br/>reservations · purchases<br/>ratings · users"]
 
     subgraph Cliente["Estado en el navegador"]
         SS["sessionStorage<br/>(FlowStore, SessionToken)"]
-        LS["localStorage<br/>(AuthStore: sesión de usuario)"]
+        LS["localStorage<br/>(cineverse_db: datos del cine<br/>cineverse_auth: sesión de usuario)"]
     end
     FE --- Cliente
 ```
 
 **Por qué esta separación:** TMDB es la única fuente de verdad para "qué es una
-película" (nunca se copian sus datos a `db.json`); JSON Server es la única fuente de
+película" (nunca se copian sus datos a `localStorage`); `LocalDB` es la única fuente de
 verdad para "qué vende este cine" (funciones, precios, salas, disponibilidad). Las
 funciones (`functions`) solo guardan el `tmdbId` como referencia — la información de
 la película se pide a TMDB en el momento, siempre fresca.
@@ -195,15 +195,11 @@ cineplex-v2/
 │   │   └── seats.js      # Reveal 3D del mapa de asientos (funcion.html)
 │   └── api/
 │       ├── tmdb.js       # Única puerta de entrada a TMDB
-│       └── cine.js       # Única puerta de entrada a JSON Server
+│       ├── localdb.js    # "Base de datos" del cine en localStorage (seed + CRUD)
+│       └── cine.js       # Única puerta de entrada a los datos propios del cine
 │
-├── scripts/
-│   └── seed.js           # Genera db.json de forma determinística
-│
-├── db.json                # Generado por seed.js — NO se versiona (.gitignore)
 ├── serve.json              # Config de `serve` (desactiva "clean URLs")
-├── package.json             # Scripts npm + dependencia de json-server
-└── .vscode/settings.json    # Evita que Live Server recargue al escribir db.json
+└── package.json             # Metadata del proyecto (sin dependencias — no hay build ni backend)
 ```
 
 **Convención clave:** cada página HTML carga exactamente los scripts que necesita, en
@@ -216,9 +212,10 @@ ES modules; todo vive en el scope global (`CONFIG`, `TMDB`, `CINE`, `FlowStore`,
 
 ## 🧬 6. Modelo de datos
 
-`db.json` (JSON Server) tiene 9 colecciones. Las funciones (`functions`) referencian
-películas de TMDB por `tmdbId`, pero **la película en sí nunca se guarda ahí** — solo
-el id.
+El objeto guardado bajo la clave `cineverse_db` de `localStorage` (`js/api/localdb.js`)
+tiene 9 colecciones, con la misma forma que tendría un `db.json` de JSON Server. Las
+funciones (`functions`) referencian películas de TMDB por `tmdbId`, pero **la película
+en sí nunca se guarda ahí** — solo el id.
 
 | Colección | Descripción | Se relaciona con |
 |---|---|---|
@@ -250,28 +247,28 @@ erDiagram
 
 ```json
 // billboard
-{ "id": "1", "tmdbId": 157336 }
+{ "id": 1, "tmdbId": 157336 }
 
 // rooms
-{ "id": "2", "name": "Sala 2 IMAX", "rows": 8, "seatsPerRow": 10, "capacity": 80, "type": "IMAX" }
+{ "id": 2, "name": "Sala 2 IMAX", "rows": 8, "seatsPerRow": 10, "capacity": 80, "type": "IMAX" }
 
 // seats
-{ "id": "1", "roomId": 1, "row": "A", "number": 1, "seatCode": "A1", "location": "Izquierda", "type": "standard" }
+{ "id": 1, "roomId": 1, "row": "A", "number": 1, "seatCode": "A1", "location": "Izquierda", "type": "standard" }
 
 // functions
-{ "id": "1", "tmdbId": 157336, "roomId": 1, "date": "2026-08-29", "time": "14:30", "price": 6500 }
+{ "id": 1, "tmdbId": 157336, "roomId": 1, "date": "2026-08-29", "time": "14:30", "price": 6500 }
 
 // functionSeats (disponible)
-{ "id": "1", "functionId": 1, "seatId": 1, "status": "available" }
+{ "id": 1, "functionId": 1, "seatId": 1, "status": "available", "holderToken": null, "selectedAt": null }
 
 // functionSeats (siendo elegido ahora mismo por alguien)
-{ "id": "21", "functionId": 1, "seatId": 21, "status": "selected", "holderToken": "tok_...", "selectedAt": "2026-08-30T00:15:49.524Z" }
+{ "id": 21, "functionId": 1, "seatId": 21, "status": "selected", "holderToken": "tok_...", "selectedAt": "2026-08-30T00:15:49.524Z" }
 
 // reservations
 {
-  "id": "6EUMx2XRahg", "status": "confirmed", "createdAt": "2026-08-30T00:37:32.890Z",
+  "id": 1, "status": "confirmed", "createdAt": "2026-08-30T00:37:32.890Z",
   "userId": null, "userName": "Ana Pérez", "email": "ana@mail.com",
-  "tmdbId": 155, "functionId": "20", "roomId": 2, "quantity": 2,
+  "tmdbId": 155, "functionId": 20, "roomId": 2, "quantity": 2,
   "seats": [{ "seatId": 119, "seatCode": "H1", "location": "Izquierda" }, { "seatId": 120, "seatCode": "H2", "location": "Izquierda" }]
 }
 
@@ -279,10 +276,10 @@ erDiagram
 { "unitPrice": 6500, "total": 13000, "paymentMethod": { "brand": "VISA", "last4": "1111" } }
 
 // ratings
-{ "id": "29USeCEubLQ", "createdAt": "2026-08-29T23:43:37Z", "tmdbId": 157336, "userId": null, "userName": "Santiago", "rating": 5, "comment": "Excelente." }
+{ "id": 1, "createdAt": "2026-08-29T23:43:37Z", "tmdbId": 157336, "userId": null, "userName": "Santiago", "rating": 5, "comment": "Excelente." }
 
 // users
-{ "id": "A36srJkqR9w", "createdAt": "2026-08-30T00:31:04Z", "name": "Ana Pérez", "email": "ana@mail.com", "passwordHash": "5ac0852e..." }
+{ "id": 1, "createdAt": "2026-08-30T00:31:04Z", "name": "Ana Pérez", "email": "ana@mail.com", "passwordHash": "5ac0852e..." }
 ```
 
 </details>
@@ -322,8 +319,9 @@ por función.
 ### Cómo funciona la selección
 
 1. Click en un asiento libre → `funcion.js` llama a `CINE.selectFunctionSeat(id, holderToken)`,
-   que hace un `PATCH /functionSeats/:id` a `status: "selected"` — la selección se
-   persiste **de inmediato** en JSON Server, no es solo un cambio visual.
+   que actualiza `functionSeats` a `status: "selected"` en `localStorage` — la
+   selección se persiste **de inmediato**, no es solo un cambio visual, y sobrevive a
+   recargar la página.
 2. Click en un asiento ya elegido por mí → se libera con
    `CINE.releaseFunctionSeat(id)` (vuelve a `available`).
 3. El resumen en vivo muestra, por cada asiento: **fila**, **número**, **código de
@@ -358,7 +356,7 @@ comprando el mismo asiento**, ni siquiera si lo eligen casi al mismo tiempo.
   trata como disponible de nuevo automáticamente pasado ese tiempo, y se libera en
   segundo plano la próxima vez que alguien pide el mapa de asientos.
 - **Revalidación final** — justo antes de confirmar una reserva/compra,
-  `verifySeatsAvailable(functionId, ids, holderToken)` vuelve a consultar JSON Server
+  `verifySeatsAvailable(functionId, ids, holderToken)` vuelve a leer `localStorage`
   y solo aprueba si **todos** los asientos siguen `selected` **y** con el mismo
   `holderToken` que los seleccionó. Nunca se confía en lo que el frontend recuerda en
   memoria.
@@ -366,28 +364,30 @@ comprando el mismo asiento**, ni siquiera si lo eligen casi al mismo tiempo.
 ```mermaid
 sequenceDiagram
     participant A as Pestaña A
-    participant S as JSON Server
+    participant S as localStorage
     participant B as Pestaña B
 
-    A->>S: PATCH functionSeats/:id → selected (holderToken=A)
-    S-->>A: 200 OK
+    A->>S: functionSeats/:id → selected (holderToken=A)
+    S-->>A: OK
 
-    B->>S: PATCH functionSeats/:id → selected (holderToken=B)
+    B->>S: functionSeats/:id → selected (holderToken=B)
     Note over S: selectFunctionSeat relee el estado:<br/>ya está "selected" y vigente por A
     S-->>B: rechazado (SEAT_TAKEN)
 
     A->>S: Confirmar compra → verifySeatsAvailable
     S-->>A: selected + holderToken=A ✔
-    A->>S: PATCH functionSeats/:id → sold
-    S-->>A: 200 OK — venta confirmada
+    A->>S: functionSeats/:id → sold
+    S-->>A: OK — venta confirmada
 ```
 
-**Límite honesto:** JSON Server no ofrece *compare-and-swap* atómico a nivel de base
-de datos, así que la ventana de milisegundos entre "leer" y "escribir" no se puede
-cerrar al 100 % solo con este backend. Lo que sí es una garantía real, y está
+**Límite honesto:** `localStorage` es sincrónico y **compartido entre pestañas del
+mismo navegador y origen**, así que esta demo anti-doble-venta funciona de verdad
+entre dos pestañas — pero, a diferencia de un backend real, no cubre dos usuarios en
+**navegadores o dispositivos distintos**: cada uno tiene su propia copia de
+`localStorage`, sin sincronización entre sí. Lo que sí es una garantía real, y está
 verificado con pruebas manuales de dos pestañas concurrentes, es que **la venta final
-nunca se duplica**: la revalidación justo antes de confirmar es la barrera que de
-verdad importa, y esa sí es imposible de saltar desde el cliente.
+nunca se duplica dentro del mismo navegador**: la revalidación justo antes de
+confirmar es la barrera que de verdad importa.
 
 ---
 
@@ -405,8 +405,8 @@ flowchart TD
     E -- sí --> F["Datos del espectador"]
     F --> G["Revalidar disponibilidad"]
     G -- ocupado --> C
-    G -- disponible --> H["POST /reservations"]
-    H --> I["PATCH functionSeats (reserved)"]
+    G -- disponible --> H["Guardar reservation<br/>en localStorage"]
+    H --> I["functionSeats → reserved"]
     I --> J["Ticket digital"]
 ```
 
@@ -423,8 +423,8 @@ flowchart TD
     H -- ocupado --> C
     H -- disponible --> I["Recalcular precio real<br/>(nunca se confía en el del cliente)"]
     I --> J["Simulación de pago<br/>~1.2s, sin cobro real"]
-    J --> K["POST /purchases"]
-    K --> L["PATCH functionSeats (sold)"]
+    J --> K["Guardar purchase<br/>en localStorage"]
+    K --> L["functionSeats → sold"]
     L --> M["Ticket digital imprimible"]
 ```
 
@@ -440,9 +440,9 @@ la película (`pelicula.html`):
 - **Puntuación** — de 1 a 5 estrellas (`<select>`).
 - **Comentario** — libre, opcional.
 
-Se guarda en JSON Server (`POST /ratings`) con `tmdbId`, `userId` (o `null` si no hay
-sesión), `userName`, `rating`, `comment` y `createdAt`. La lista se pide con
-`GET /ratings?tmdbId=...` y se muestra ordenada de más reciente a más antigua.
+Se guarda en `localStorage` (`CINE.createRating`) con `tmdbId`, `userId` (o `null` si
+no hay sesión), `userName`, `rating`, `comment` y `createdAt`. La lista se pide con
+`CINE.getRatingsByMovie(tmdbId)` y se muestra ordenada de más reciente a más antigua.
 
 ```json
 {
@@ -457,10 +457,9 @@ sesión), `userName`, `rating`, `comment` y `createdAt`. La lista se pide con
 
 **Dos detalles técnicos no triviales, resueltos durante el desarrollo:**
 
-- `tmdbId` se guarda siempre como **número**, nunca como string — JSON Server filtra
-  `?tmdbId=...` comparando tipos, así que un valor guardado como texto (por ejemplo,
-  tomado tal cual de una query string de la URL) nunca hace match contra el filtro y
-  la valoración quedaría invisible para siempre, aunque sí se hubiera guardado.
+- `tmdbId` se guarda siempre como **número**, nunca como string — evita
+  inconsistencias al filtrar (`getRatingsByMovie`) si en algún punto se comparara con
+  `===` en vez de con la conversión a string que usa `LocalDB.query`.
 - El nombre y el comentario pasan por `escapeHtml()` (`js/ui-helpers.js`) antes de
   insertarse en la página — sin este escape, un comentario con HTML/JavaScript se
   ejecutaría para cualquiera que abriera esa película (XSS persistente).
@@ -469,7 +468,8 @@ sesión), `userName`, `rating`, `comment` y `createdAt`. La lista se pide con
 
 ## 👤 11. Autenticación
 
-Registro e inicio de sesión reales contra JSON Server (colección `users`):
+Registro e inicio de sesión reales contra `localStorage` (colección `users` de
+`LocalDB`):
 
 - La contraseña **nunca** se guarda ni se transmite en texto plano: se hashea con
   `SHA-256` usando `crypto.subtle.digest` (Web Crypto, nativo del navegador — no hay
@@ -482,16 +482,16 @@ Registro e inicio de sesión reales contra JSON Server (colección `users`):
 
 > ⚠️ **Nivel de seguridad real, sin exagerar:** este es un esquema de autenticación de
 > nivel demo. No hay *salt* por usuario, no hay servidor de sesiones ni tokens
-> firmados, y cualquiera con acceso a `db.json` puede ver todos los hashes. Es
-> suficiente para el alcance de este proyecto académico, **no** para un sistema en
-> producción con usuarios reales.
+> firmados, y cualquiera con acceso a las DevTools del navegador (`localStorage`)
+> puede ver todos los hashes. Es suficiente para el alcance de este proyecto
+> académico, **no** para un sistema en producción con usuarios reales.
 
 ---
 
 ## 🎫 12. Mis tickets
 
-`mis-tickets.html` pide en paralelo `GET /reservations?userId=...` y
-`GET /purchases?userId=...` para el usuario logueado (`AuthStore.get().id`), los
+`mis-tickets.html` pide en paralelo `CINE.getReservationsByUser(userId)` y
+`CINE.getPurchasesByUser(userId)` para el usuario logueado (`AuthStore.get().id`), los
 combina y ordena por fecha. Cada fila se "hidrata" una sola vez con la película
 (TMDB), la sala y la función correspondientes, y ofrece un botón **"Ver ticket"** que
 abre un modal con el mismo componente visual `.ticket` que se usa al confirmar una
@@ -536,40 +536,48 @@ copiar la API Key (v3) o el Read Access Token (v4) → pegarla en
 
 ---
 
-## 🗄️ 14. JSON Server
+## 🗄️ 14. Almacenamiento local (localStorage)
 
-JSON Server actúa como el "backend" del cine: un servidor REST completo generado
-automáticamente a partir de `db.json`, sin escribir una sola línea de servidor. Se
-eligió porque el foco del proyecto es el frontend y su lógica de negocio (estado de
-asientos, anti-doble-venta, validaciones) — no construir y mantener una API propia
-desde cero.
+`js/api/localdb.js` (`LocalDB`) es el "backend" del cine: toda la base de datos
+(billboard, salas, asientos, funciones, reservas, compras, valoraciones, usuarios)
+vive en un único objeto JSON guardado bajo la clave `cineverse_db` de `localStorage`.
+Se eligió porque el foco del proyecto es el frontend y su lógica de negocio (estado de
+asientos, anti-doble-venta, validaciones) — no montar ni mantener un servidor aparte,
+y porque así la app corre 100% offline, sin instalar ni levantar nada.
 
-- **Se inicia con:** `npm run server` → `json-server --watch db.json --port 4000`
-- **`--watch`** hace que cualquier `PATCH`/`POST` se refleje inmediatamente en
-  `db.json` en disco (y ese archivo se recarga en memoria en cada petición).
-- Todo el acceso pasa por `js/api/cine.js` — es el único archivo que hace `fetch()`
-  hacia `http://localhost:4000`.
+- **Primera visita:** si `cineverse_db` no existe (o quedó de una versión de esquema
+  anterior), `LocalDB` la siembra automáticamente con datos de demostración —
+  cartelera, salas, asientos y funciones para hoy + los próximos 2 días — usando la
+  misma lógica determinística que antes tenía `scripts/seed.js`.
+- **Escritura inmediata:** cada `insert`/`patch` guarda el objeto completo de vuelta
+  en `localStorage` en el mismo tick — no hay red, ni *loading*, ni posibilidad real
+  de que la escritura "no llegue".
+- **Alcance:** los datos son **por navegador** (no se comparten entre dispositivos ni
+  entre navegadores distintos en la misma máquina) y persisten hasta que se borren los
+  datos del sitio o se llame a `LocalDB.reset()` desde la consola.
+- Todo el acceso pasa por `js/api/cine.js` — es el único módulo que llama a
+  `LocalDB.*` para los datos propios del cine.
 
 <details>
-<summary>📋 Referencia completa de endpoints usados por el frontend</summary>
+<summary>📋 Referencia completa de operaciones usadas por el frontend</summary>
 
 ```text
-GET    /billboard
-GET    /rooms/:id
-GET    /functions?tmdbId=:tmdbId
-GET    /functions/:id
-GET    /seats?roomId=:roomId
-GET    /functionSeats?functionId=:functionId
-GET    /functionSeats/:id
-PATCH  /functionSeats/:id           (status → available | selected | reserved | sold)
-POST   /reservations
-GET    /reservations?userId=:userId
-POST   /purchases
-GET    /purchases?userId=:userId
-GET    /ratings?tmdbId=:tmdbId
-POST   /ratings
-GET    /users?email=:email
-POST   /users
+LocalDB.getAll("billboard")
+LocalDB.getById("rooms", id)
+LocalDB.query("functions", fn => fn.tmdbId === tmdbId)
+LocalDB.getById("functions", id)
+LocalDB.query("seats", s => s.roomId === roomId)
+LocalDB.query("functionSeats", fs => fs.functionId === functionId)
+LocalDB.getById("functionSeats", id)
+LocalDB.patch("functionSeats", id, { status })   // available | selected | reserved | sold
+LocalDB.insert("reservations", data)
+LocalDB.query("reservations", r => r.userId === userId)
+LocalDB.insert("purchases", data)
+LocalDB.query("purchases", p => p.userId === userId)
+LocalDB.query("ratings", r => r.tmdbId === tmdbId)
+LocalDB.insert("ratings", data)
+LocalDB.query("users", u => u.email === email)
+LocalDB.insert("users", data)
 ```
 
 </details>
@@ -617,7 +625,7 @@ disparar — ninguna funcionalidad depende de que una animación se complete.
 | TMDB no responde / sin red | Mensaje de error explícito, no una pantalla en blanco |
 | API Key de TMDB inválida (401) | "API Key de TMDB inválida o vencida" |
 | Película/función inexistente | Estado vacío o `renderFatal()` con enlace de vuelta a la cartelera |
-| JSON Server caído | "No se pudo conectar con el servidor del cine. Verifica que esté corriendo en..." |
+| `localStorage` lleno o inaccesible (modo privado estricto) | Se registra en consola; la escritura falla mostrando el estado previo, sin romper la página |
 | Asiento ya no disponible al confirmar | Error visible en el checkout, sin perder los datos ya escritos en el formulario |
 | Cantidad de tickets ≠ asientos elegidos | Botón "Continuar" deshabilitado + mensaje de mismatch en vivo |
 | Tarjeta con formato inválido | Validación de longitud/vencimiento/CVV antes de simular el cobro, foco en el campo con error |
@@ -633,11 +641,13 @@ Porque la información de una película (poster, sinopsis, reparto) no es
 responsabilidad del cine — es de dominio público y cambia con el tiempo (ratings,
 trailers nuevos). Guardar solo el `tmdbId` evita duplicar y desincronizar datos.
 
-**¿Por qué JSON Server y no una base de datos real?**
+**¿Por qué localStorage y no un backend real (o JSON Server)?**
 El foco del proyecto es la lógica de negocio del frontend (estado de asientos,
-anti-doble-venta, validaciones), no construir un backend. JSON Server da una API REST
-real y persistente con cero código de servidor, lo suficiente para validar esa lógica
-de verdad contra HTTP.
+anti-doble-venta, validaciones), no construir ni operar un backend. `localStorage` da
+persistencia real y sincrónica con cero servidor y cero pasos de instalación: se abre
+`index.html` y ya funciona. El costo asumido a propósito es el que se explica en
+[Anti-doble-venta](#-8-anti-doble-venta): los datos no se comparten entre navegadores
+ni dispositivos distintos.
 
 **¿Por qué existe `functionSeats` en vez de guardar el estado directo en `seats`?**
 Porque un asiento físico no tiene un solo estado: puede estar vendido para la función
@@ -651,11 +661,12 @@ Porque la sesión de compra debe funcionar igual sin login (invitados), y porque
 pestañas del mismo usuario logueado también deberían poder competir de forma
 correcta por un asiento — identificar por pestaña, no por cuenta, cubre ambos casos.
 
-**¿Cómo se mantiene sincronizado el DOM con JSON Server?**
+**¿Cómo se mantiene sincronizado el DOM con localStorage?**
 No hay WebSockets ni polling: cada acción que cambia el estado de un asiento
-(seleccionar, deseleccionar, confirmar) hace su propio `PATCH`/`POST` y actualiza el
-DOM localmente recién cuando esa petición confirma éxito — nunca al revés. El mapa
-completo se vuelve a pedir entero cada vez que se entra a `funcion.html`.
+(seleccionar, deseleccionar, confirmar) escribe primero en `localStorage` (vía
+`CINE`/`LocalDB`) y actualiza el DOM localmente recién cuando esa escritura confirma
+éxito — nunca al revés. El mapa completo se vuelve a pedir entero cada vez que se
+entra a `funcion.html`.
 
 **¿Por qué el precio se recalcula siempre en el momento de confirmar?**
 `unitPrice`/`total` nunca se toman de lo que el cliente trae en `sessionStorage` —
@@ -669,17 +680,19 @@ valor desde la consola del navegador antes de confirmar.
 
 ### Requisitos previos
 
-- [Node.js](https://nodejs.org/) (para `npm` y `json-server`)
-- Un navegador moderno (usa `fetch`, `crypto.subtle`, CSS Grid)
+- Un navegador moderno (usa `fetch`, `crypto.subtle`, CSS Grid, `localStorage`)
 - Una API Key/token de TMDB (gratis, ver [Integración con TMDB](#-13-integración-con-tmdb))
+- [Node.js](https://nodejs.org/) — **opcional**, solo si querés usar `npx serve .`
+  para levantar un servidor local en vez de abrir los archivos directo
 
-### 1. Clonar e instalar
+### 1. Clonar
 
 ```bash
 git clone https://github.com/santiagosanabria-1/proyecto-javascrip-santiago.git
 cd proyecto-javascrip-santiago
-npm install
 ```
+
+No hace falta `npm install`: no hay dependencias, ni build, ni backend que levantar.
 
 ### 2. Configurar la API Key de TMDB
 
@@ -696,40 +709,23 @@ const CONFIG = {
 > configuración vive directamente en `js/config.js`. Nunca subas tu propia clave a
 > un repositorio público si es sensible para vos.
 
-### 3. Generar los datos del cine
-
-```bash
-npm run seed      # genera db.json (cartelera, salas, asientos, funciones...)
-```
-
-Las fechas de las funciones se generan **relativas al día en que se ejecuta este
-comando** (hoy, hoy+1, hoy+2) — nunca quedan fechas fijas ni obsoletas.
-
-### 4. Levantar JSON Server
-
-```bash
-npm run server    # http://localhost:4000
-```
-
-### 5. Servir el frontend (en otra terminal)
+### 3. Servir el frontend
 
 ```bash
 npx serve .
 ```
 
-⚠️ **Dos advertencias importantes**, ambas ya resueltas por archivos incluidos en el
-repo, pero vale entender por qué:
+⚠️ **`serve.json`** desactiva las "clean URLs" de `serve`. Sin él, `serve` redirige
+`funcion.html?functionId=3` a `/funcion`, **perdiendo la query string** de la que
+depende toda la navegación de la app.
 
-- **`serve.json`** desactiva las "clean URLs" de `serve`. Sin él, `serve` redirige
-  `funcion.html?functionId=3` a `/funcion`, **perdiendo la query string** de la que
-  depende toda la navegación de la app.
-- **No uses la extensión "Live Server" de VS Code** sin el `.vscode/settings.json`
-  incluido (o usalo y reiniciá Live Server para que lo tome). Como `json-server
-  --watch` reescribe `db.json` en disco en cada acción real (elegir un asiento,
-  reservar, comprar), Live Server detecta ese cambio y recarga la pestaña completa —
-  el síntoma es "elijo un asiento y la página se reinicia sola".
+También funciona con cualquier otro servidor estático (Live Server de VS Code, `python
+-m http.server`, etc.) — la única regla es no desactivar la query string en las URLs.
+Los datos del cine (cartelera, funciones, asientos...) se siembran solos la primera
+vez que se abre `index.html`, con fechas relativas al día de hoy (hoy, hoy+1, hoy+2) —
+nunca quedan fechas fijas ni obsoletas.
 
-### 6. Abrir la app
+### 4. Abrir la app
 
 ```text
 http://localhost:3000/index.html
@@ -742,8 +738,8 @@ http://localhost:3000/index.html
 ## 🧪 20. Pruebas realizadas
 
 No hay un framework de tests automatizados (no hay Jest/Playwright en
-`package.json`): la verificación fue **manual y funcional**, contra un JSON Server
-real y con dos pestañas de navegador simulando dos usuarios concurrentes cuando
+`package.json`): la verificación fue **manual y funcional**, contra `localStorage`
+real y con dos pestañas del mismo navegador simulando dos usuarios concurrentes cuando
 correspondía. Resultado documentado en el historial de commits del repositorio.
 
 | Prueba | Resultado |
@@ -752,8 +748,8 @@ correspondía. Resultado documentado en el historial de commits del repositorio.
 | Búsqueda paginada sobre el catálogo completo | ✅ |
 | Ficha de película (reparto, director, trailer, fecha de estreno) | ✅ |
 | Funciones filtradas para excluir fechas pasadas | ✅ |
-| Selección de asiento persiste en JSON Server (no solo visual) | ✅ |
-| Deselección libera el asiento en JSON Server | ✅ |
+| Selección de asiento persiste en localStorage (no solo visual) | ✅ |
+| Deselección libera el asiento en localStorage | ✅ |
 | Cantidad de tickets ≠ asientos elegidos → bloqueado | ✅ |
 | Dos pestañas compitiendo por el mismo asiento → solo una gana | ✅ |
 | Selección abandonada se libera pasado el TTL (10 min) | ✅ |
@@ -802,7 +798,8 @@ Ideas de mejora razonables para una futura iteración — **ninguna implementada
 todavía**:
 
 ```text
-🚧 Backend real (Node/Express + base de datos) en vez de JSON Server
+🚧 Backend real (Node/Express + base de datos) en vez de localStorage,
+   para compartir disponibilidad entre navegadores/dispositivos distintos
 🚧 Pasarela de pago real (Stripe/MercadoPago) en vez de la simulación actual
 🚧 Panel administrativo para gestionar cartelera, salas y funciones
 🚧 Autenticación con salt + servidor de sesiones real

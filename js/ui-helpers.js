@@ -73,7 +73,7 @@ function debounce(fn, delay = 400) {
 /**
  * Hashea texto con SHA-256 usando Web Crypto (nativa del navegador, sin
  * librerías externas). Se usa para nunca guardar/transmitir la contraseña
- * en texto plano hacia JSON Server. Nivel demo: sin salt ni servidor real
+ * en texto plano hacia localStorage. Nivel demo: sin salt ni servidor real
  * que verifique — suficiente para este proyecto, no para producción.
  */
 async function hashPassword(text) {

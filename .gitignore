@@ -1,20 +1,10 @@
 # Dependencias
 node_modules/
 
-# Base de datos de JSON Server: se genera de forma determinística con
-# `npm run seed` y además muta en tiempo de ejecución (reservas, compras,
-# usuarios de prueba) — no corresponde versionarla.
-db.json
-
 # Sistema operativo / editor
 .DS_Store
 Thumbs.db
-# Se versiona .vscode/settings.json a propósito: es lo que evita que la
-# extensión Live Server entre en un loop de recargas (ver README, sección
-# "Cómo ejecutarlo") -- el resto de .vscode/ (workspace, launch personal)
-# sigue ignorado.
 .vscode/*
-!.vscode/settings.json
 
 # Logs
 *.log

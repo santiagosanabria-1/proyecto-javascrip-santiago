@@ -1,7 +1,7 @@
 /**
  * js/reserva.js
  * Lógica de reserva.html: resumen final, pasarela de pago simulada,
- * revalidación real anti-doble-venta contra JSON Server, persistencia de
+ * revalidación real anti-doble-venta contra localStorage, persistencia de
  * la reserva/compra y transición a la vista de ticket.
  */
 let reserva_flow = null;
@@ -53,22 +53,10 @@ function initCancelLink() {
 async function releaseReservaSeats(useBeacon) {
     if (!reserva_flow?.seats?.length) return;
     const ids = reserva_flow.seats.map((s) => s.functionSeatId);
-    if (useBeacon) {
-        ids.forEach((id) => {
-            // .catch() es obligatorio acá: fetch() rechaza la promesa de forma
-            // asíncrona ante un fallo de red, un try/catch alrededor no lo
-            // atrapa y quedaba como unhandled promise rejection en consola.
-            fetch(`${CONFIG.JSON_SERVER_URL}/functionSeats/${id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ status: "available", holderToken: null, selectedAt: null }),
-                keepalive: true
-            }).catch(() => {
-                /* best-effort: si falla, se autolimpia por vencimiento (ver CINE.getSeatMap) */
-            });
-        });
-        return;
-    }
+    // El estado vive en localStorage (síncrono, sin red), así que ya no
+    // hace falta un fetch con keepalive para que la liberación "sobreviva"
+    // al cierre de la pestaña -- se escribe en el mismo tick. `useBeacon`
+    // se mantiene solo para no tocar la firma que usan los llamadores.
     await Promise.all(ids.map((id) => CINE.releaseFunctionSeat(id).catch(() => {})));
 }
 
@@ -285,7 +273,7 @@ async function handleConfirm(triggerBtn, mode) {
 
         // El precio NUNCA se toma de `reserva_flow` (sessionStorage/memoria
         // del cliente, editable desde la consola) -- se recalcula desde el
-        // precio real de la función en JSON Server. Sin esto, cambiar
+        // precio real de la función en localStorage. Sin esto, cambiar
         // `reserva_flow.total` antes de confirmar dejaba comprar cualquier
         // cantidad de entradas por el precio que el cliente quisiera
         // (encontrado y verificado en la auditoría).
@@ -324,7 +312,7 @@ async function handleConfirm(triggerBtn, mode) {
                   })
                 : await CINE.createReservation(payload);
 
-        // 2) Marcar los asientos como vendidos/reservados en JSON Server (ya
+        // 2) Marcar los asientos como vendidos/reservados en localStorage (ya
         // no están "en selección" de nadie, así que se limpia el holder).
         await Promise.all(
             functionSeatIds.map((id) => CINE.updateFunctionSeat(id, newStatus, { holderToken: null, selectedAt: null }))

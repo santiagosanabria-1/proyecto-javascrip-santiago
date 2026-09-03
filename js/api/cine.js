@@ -1,10 +1,11 @@
 /**
  * js/api/cine.js
- * Única puerta de entrada a JSON Server (datos propios del cine: cartelera,
- * salas, funciones, asientos, reservas, compras, valoraciones).
+ * Única puerta de entrada a los datos propios del cine (cartelera, salas,
+ * funciones, asientos, reservas, compras, valoraciones, usuarios). Antes
+ * hablaba con JSON Server por HTTP; ahora todo vive en localStorage vía
+ * LocalDB (js/api/localdb.js) -- misma API pública, cero backend.
  */
 const CINE = (() => {
-    const BASE = CONFIG.JSON_SERVER_URL;
     // Solo hay un puñado de salas y se consultan repetidamente (cada función,
     // cada cambio de fecha) — se cachean en memoria por el resto de la sesión.
     const roomCache = new Map();
@@ -13,78 +14,43 @@ const CINE = (() => {
     // tiempo se trata como disponible de nuevo (ver getSeatMap).
     const SELECTION_HOLD_MINUTES = 10;
 
-    async function request(path, options = {}) {
-        let response;
-        try {
-            response = await fetch(`${BASE}${path}`, {
-                headers: { "Content-Type": "application/json" },
-                ...options
-            });
-        } catch {
-            throw new Error(
-                `No se pudo conectar con el servidor del cine (JSON Server). Verifica que esté corriendo en ${BASE}.`
-            );
-        }
-        if (!response.ok) throw new Error(`Error del servidor del cine (código ${response.status}).`);
-        if (response.status === 204) return null;
-        return response.json();
-    }
-
-    /** GET /resource/:id que devuelve null (no lanza) si el recurso no existe (404). */
-    async function getById(resource, id) {
-        let response;
-        try {
-            response = await fetch(`${BASE}/${resource}/${encodeURIComponent(id)}`, {
-                headers: { "Content-Type": "application/json" }
-            });
-        } catch {
-            throw new Error(
-                `No se pudo conectar con el servidor del cine (JSON Server). Verifica que esté corriendo en ${BASE}.`
-            );
-        }
-        if (response.status === 404) return null;
-        if (!response.ok) throw new Error(`Error del servidor del cine (código ${response.status}).`);
-        return response.json();
-    }
-
     // ---------- Cartelera propia del cine ----------
     async function getBillboard() {
-        return request("/billboard");
+        return LocalDB.getAll("billboard");
     }
 
     // ---------- Salas ----------
     async function getRoom(roomId) {
         const key = String(roomId);
         if (roomCache.has(key)) return roomCache.get(key);
-        const room = await getById("rooms", roomId);
+        const room = LocalDB.getById("rooms", roomId);
         if (room) roomCache.set(key, room);
         return room;
     }
 
     // ---------- Funciones ----------
     async function getFunctionsByMovie(tmdbId) {
-        return request(`/functions?tmdbId=${encodeURIComponent(tmdbId)}`);
+        return LocalDB.query("functions", (fn) => String(fn.tmdbId) === String(tmdbId));
     }
 
     async function getFunction(functionId) {
-        return getById("functions", functionId);
+        return LocalDB.getById("functions", functionId);
     }
 
     // ---------- Asientos físicos ----------
     async function getSeatsByRoom(roomId) {
-        return request(`/seats?roomId=${encodeURIComponent(roomId)}`);
+        return LocalDB.query("seats", (s) => String(s.roomId) === String(roomId));
     }
 
     // ---------- Estado de asientos por función ----------
     async function getFunctionSeats(functionId) {
-        return request(`/functionSeats?functionId=${encodeURIComponent(functionId)}`);
+        return LocalDB.query("functionSeats", (fs) => String(fs.functionId) === String(functionId));
     }
 
     async function updateFunctionSeat(id, status, extra = {}) {
-        return request(`/functionSeats/${id}`, {
-            method: "PATCH",
-            body: JSON.stringify({ status, ...extra })
-        });
+        const updated = LocalDB.patch("functionSeats", id, { status, ...extra });
+        if (!updated) throw new Error(`No se encontró el asiento de función #${id}.`);
+        return updated;
     }
 
     function isStaleSelection(fs) {
@@ -96,17 +62,15 @@ const CINE = (() => {
     /**
      * Marca un asiento como "selected" (elegido, todavía no confirmado) para
      * ESTA función, atado a `holderToken` (identifica la pestaña/sesión que
-     * lo tomó). Antes de escribir, relee el estado actual: JSON Server no
-     * tiene compare-and-swap atómico, así que esto no elimina la ventana de
-     * carrera por completo (dos GET simultáneos podrían ver "available" los
-     * dos), pero sí evita el caso mucho más común y grave que se encontró en
-     * la auditoría: un segundo click sobre un asiento que otra sesión ya
-     * tiene tomado (aunque sea milisegundos después) pisaba su holderToken
-     * sin ningún aviso. Con esto, ese PATCH se rechaza en el cliente en vez
-     * de sobreescribir en silencio.
+     * lo tomó). Antes de escribir, relee el estado actual: aunque localStorage
+     * es de una sola pestaña a la vez (sin condiciones de carrera reales
+     * entre navegadores distintos como con JSON Server), esta relectura sigue
+     * evitando el caso encontrado en la auditoría: un segundo click sobre un
+     * asiento que esta misma sesión ya tiene tomado en otra pestaña pisaba su
+     * holderToken sin ningún aviso.
      */
     async function selectFunctionSeat(functionSeatId, holderToken) {
-        const current = await getById("functionSeats", functionSeatId);
+        const current = LocalDB.getById("functionSeats", functionSeatId);
         const heldByOther =
             current && current.status === "selected" && current.holderToken && current.holderToken !== holderToken && !isStaleSelection(current);
         const takenByOther = current && (current.status === "reserved" || current.status === "sold");
@@ -157,8 +121,8 @@ const CINE = (() => {
      * Vuelve a consultar el estado REAL de los asientos justo antes de
      * confirmar una reserva/compra — nunca se confía solo en el frontend.
      * Un asiento solo es válido para confirmar si sigue "selected" Y el
-     * `holderToken` es el mismo que lo seleccionó (si otra sesión lo tomó
-     * después, o si nadie lo tiene reservado, la operación se detiene).
+     * `holderToken` es el mismo que lo seleccionó (si nadie lo tiene
+     * reservado, o cambió de estado, la operación se detiene).
      */
     async function verifySeatsAvailable(functionId, functionSeatIds, holderToken) {
         const current = await getFunctionSeats(functionId);
@@ -171,51 +135,43 @@ const CINE = (() => {
 
     // ---------- Reservas ----------
     async function createReservation(data) {
-        return request("/reservations", {
-            method: "POST",
-            body: JSON.stringify({ status: "confirmed", createdAt: new Date().toISOString(), ...data })
-        });
+        return LocalDB.insert("reservations", { status: "confirmed", createdAt: new Date().toISOString(), ...data });
     }
 
     /** Historial: todas las reservas de un usuario (para "Mis tickets"). */
     async function getReservationsByUser(userId) {
-        return request(`/reservations?userId=${encodeURIComponent(userId)}`);
+        return LocalDB.query("reservations", (r) => String(r.userId) === String(userId));
     }
 
     // ---------- Compras ----------
     async function createPurchase(data) {
-        return request("/purchases", {
-            method: "POST",
-            body: JSON.stringify({ status: "completed", createdAt: new Date().toISOString(), ...data })
-        });
+        return LocalDB.insert("purchases", { status: "completed", createdAt: new Date().toISOString(), ...data });
     }
 
     /** Historial: todas las compras de un usuario (para "Mis tickets"). */
     async function getPurchasesByUser(userId) {
-        return request(`/purchases?userId=${encodeURIComponent(userId)}`);
+        return LocalDB.query("purchases", (p) => String(p.userId) === String(userId));
     }
 
     // ---------- Valoraciones ----------
     async function getRatingsByMovie(tmdbId) {
-        return request(`/ratings?tmdbId=${encodeURIComponent(tmdbId)}`);
+        return LocalDB.query("ratings", (r) => String(r.tmdbId) === String(tmdbId));
     }
 
     async function createRating(data) {
-        return request("/ratings", { method: "POST", body: JSON.stringify({ createdAt: new Date().toISOString(), ...data }) });
+        return LocalDB.insert("ratings", { createdAt: new Date().toISOString(), ...data });
     }
 
     // ---------- Usuarios (login/registro) ----------
     /** null si no existe ninguna cuenta con ese email (no lanza error). */
     async function getUserByEmail(email) {
-        const matches = await request(`/users?email=${encodeURIComponent(email.trim().toLowerCase())}`);
+        const normalized = email.trim().toLowerCase();
+        const matches = LocalDB.query("users", (u) => u.email === normalized);
         return matches[0] || null;
     }
 
     async function createUser(data) {
-        return request("/users", {
-            method: "POST",
-            body: JSON.stringify({ createdAt: new Date().toISOString(), ...data, email: data.email.trim().toLowerCase() })
-        });
+        return LocalDB.insert("users", { createdAt: new Date().toISOString(), ...data, email: data.email.trim().toLowerCase() });
     }
 
     return {

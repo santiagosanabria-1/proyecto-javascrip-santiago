@@ -3,7 +3,7 @@
  * Lógica de funcion.html: arma el mapa de la sala (rooms + seats +
  * functionSeats) y controla la selección múltiple de asientos con
  * resumen en vivo. Cada selección/deselección se persiste de verdad en
- * JSON Server (functionSeats -> "selected"/"available"), identificada con
+ * localStorage (functionSeats -> "selected"/"available"), identificada con
  * un token de sesión (SessionToken) -- así dos personas nunca pueden
  * terminar comprando el mismo asiento, ni siquiera si lo seleccionan al
  * mismo tiempo. Al continuar, guarda la selección en FlowStore y navega a
@@ -158,32 +158,17 @@ function initBackLink() {
     });
 }
 
-/** Libera (PATCH a "available") todos los asientos que esta pestaña tenía
- *  tomados. `useBeacon` usa fetch con keepalive para que la petición
- *  sobreviva al cierre de la pestaña (no se puede "esperar" una respuesta
- *  en beforeunload, pero sí se puede disparar la petición). */
+/** Libera todos los asientos que esta pestaña tenía tomados (vuelven a
+ *  "available"). Como el estado vive en localStorage (síncrono, sin red),
+ *  ya no hace falta un fetch con keepalive para "sobrevivir" al cierre de
+ *  la pestaña -- la escritura ocurre en el mismo tick, antes de que
+ *  beforeunload termine. `useBeacon` se mantiene solo para no tocar la
+ *  firma que usan los llamadores. */
 async function releaseSelectedSeats(useBeacon) {
     if (!funcion_selected.length) return;
     const ids = funcion_selected.map((s) => s.functionSeatId);
     funcion_selected = [];
-    if (useBeacon) {
-        ids.forEach((id) => {
-            // fetch() nunca lanza de forma síncrona ante un fallo de red -- devuelve
-            // una promesa rechazada. Sin este .catch() quedaba como una promise
-            // rejection sin manejar en consola cada vez que el PATCH fallaba
-            // (JSON Server caído, tab cerrándose de golpe): el try/catch de
-            // alrededor no la atrapaba porque el rechazo es asíncrono.
-            fetch(`${CONFIG.JSON_SERVER_URL}/functionSeats/${id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ status: "available", holderToken: null, selectedAt: null }),
-                keepalive: true
-            }).catch(() => {
-                /* best-effort: si falla, se autolimpia por vencimiento (ver getSeatMap) */
-            });
-        });
-        return;
-    }
+    // best-effort: si algún id ya no existe, se ignora en vez de romper el resto.
     await Promise.all(ids.map((id) => CINE.releaseFunctionSeat(id).catch(() => {})));
 }
 
@@ -250,7 +235,7 @@ function renderSeatMap(seatPanel, seats, room) {
 
 /**
  * Selecciona/deselecciona un asiento. La selección es una petición HTTP
- * real a JSON Server (functionSeats -> "selected", con el token de esta
+ * real a localStorage (functionSeats -> "selected", con el token de esta
  * sesión) -- si otra persona ya lo tomó justo antes, el asiento deja de
  * estar disponible y este click se rechaza con un aviso, en vez de dejar
  * que dos personas "elijan" la misma silla en pantalla.
@@ -277,7 +262,7 @@ async function toggleSeat(btn) {
         const updated = await CINE.selectFunctionSeat(btn.dataset.functionSeatId, token);
 
         // Confirma que la selección quedó a nombre de ESTA sesión: si otra
-        // petición (otra persona) llegó primero, JSON Server ya tiene un
+        // petición (otra persona) llegó primero, localStorage ya tiene un
         // holderToken distinto y no debemos tomar el asiento como propio.
         if (updated.status !== "selected" || updated.holderToken !== token) {
             throw new Error("taken");
