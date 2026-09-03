@@ -3,7 +3,7 @@
  * Lógica de index.html.
  *
  * "En cartelera" (grid, hero, galería) muestra SOLO la programación real
- * del cine (`billboard` de JSON Server, hidratada con TMDB) -- son las
+ * del cine (`billboard` en localStorage, hidratada con TMDB) -- son las
  * únicas películas con funciones/asientos reales para comprar. Antes esta
  * grilla mostraba las películas "populares" de TMDB (miles de títulos),
  * y como casi ninguna estaba en el `billboard`, casi cualquier "Ver
