@@ -99,7 +99,6 @@ function initSignIn() {
         }
     });
 }
-
 function initSignUp() {
     const form = document.querySelector('[data-form="signup"]');
     if (!form) return;

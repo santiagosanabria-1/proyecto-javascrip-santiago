@@ -1,8 +1,4 @@
-/**
- * js/api/tmdb.js
- * Única puerta de entrada a TMDB. Ningún otro módulo hace fetch() directo
- * a api.themoviedb.org.
- */
+
 const TMDB = (() => {
     // Caché en memoria de solo-sesión: evita repetir /movie/:id y
     // /movie/:id/credits cuando el usuario vuelve a pasar por la misma

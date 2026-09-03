@@ -2,6 +2,7 @@
    css/animations.css
    Estados iniciales que js/animations/*.js anima al entrar (GSAP parte
    desde acá) + la capa de accesibilidad `prefers-reduced-motion`.
+ 
    No define keyframes de scroll (eso vive en animations.js): solo el
    punto de partida visual y los interruptores de seguridad.
    ================================================================== */

@@ -1,18 +1,7 @@
-/**
- * js/api/localdb.js
- * Reemplaza a un backend/JSON Server: toda la "base de datos" propia del cine
- * (cartelera, salas, asientos, funciones, reservas, compras, valoraciones,
- * usuarios) vive en localStorage bajo una sola clave. Se siembra una única
- * vez con datos de demostración equivalentes a los de scripts/seed.js --
- * las próximas visitas reutilizan lo que ya haya en el navegador.
- *
- * LocalDB expone un mini-CRUD genérico (getAll/getById/query/insert/patch)
- * que js/api/cine.js usa igual que antes usaba fetch(). Nada de esto toca
- * la red: la app funciona 100% offline / sin backend.
- */
+
 const LocalDB = (() => {
     const DB_KEY = "cineverse_db";
-    const DB_VERSION = 1; // subir esto fuerza un reseed (ver load())
+    const DB_VERSION = 2;
 
     // -------------------------------------------------------------------
     // Datos semilla (traducción 1:1 de scripts/seed.js a runtime navegador)
@@ -38,26 +27,33 @@ const LocalDB = (() => {
     }
 
     function buildSeats() {
-        const seats = [];
-        let id = 1;
-        ROOMS.forEach((room) => {
-            for (let r = 0; r < room.rows; r++) {
-                const row = ROW_LETTERS[r];
-                for (let n = 1; n <= room.seatsPerRow; n++) {
-                    seats.push({
-                        id: id++,
-                        roomId: room.id,
-                        row,
-                        number: n,
-                        seatCode: `${row}${n}`,
-                        location: locationForColumn(n, room.seatsPerRow),
-                        type: room.type === "IMAX" && r === 0 ? "premium" : "standard"
-                    });
-                }
+    const seats = [];
+    let id = 1;
+
+    ROOMS.forEach((room) => {
+        for (let r = 0; r < room.rows; r++) {
+            const row = ROW_LETTERS[r];
+            for (let n = 1; n <= room.seatsPerRow; n++) {
+                let type = "standard";
+                if (r === 0) type = "vip";
+                else if (r === 1 || r === 2) type = "premium";
+
+                seats.push({
+                    id: id++,
+                    roomId: room.id,
+                    row,
+                    number: n,
+                    seatCode: `${row}${n}`,
+                    location: locationForColumn(n, room.seatsPerRow),
+                    type: type
+                });
             }
-        });
-        return seats;
-    }
+        }
+    }); // Cierra ROOMS.forEach
+
+    return seats; // Dentro de buildSeats()
+}
+
 
     /** Hoy + los próximos 2 días, para que las funciones nunca queden
      *  "programadas" en el pasado sin importar cuándo se abra la página. */
@@ -133,7 +129,12 @@ const LocalDB = (() => {
             reservations: [],
             purchases: [],
             ratings: [],
-            users: []
+            users: [],
+            promocodes: [
+                {id: 1, code: "CINE20", discount:20, active: true},
+                {id: 2, code: "CINE10", discount:10, active: true},
+                {id: 3, code: "OLD50", discount:50, active: false   },
+            ]
         };
     }
 
@@ -221,4 +222,4 @@ const LocalDB = (() => {
     }
 
     return { getAll, getById, query, insert, patch, reset };
-})();
+ })();

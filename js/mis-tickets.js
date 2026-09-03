@@ -1,10 +1,4 @@
-/**
- * js/mis-tickets.js
- * Lógica de mis-tickets.html: historial real de compras/reservas del
- * usuario logueado (localStorage, filtrado por userId), con un botón para
- * ver el ticket completo (mismo componente `.ticket` que reserva.html,
- * imprimible/descargable con el mismo mecanismo).
- */
+
 document.addEventListener("DOMContentLoaded", () => {
     const list = document.querySelector("[data-tickets-list]");
     if (!list) return;
