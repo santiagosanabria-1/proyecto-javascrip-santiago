@@ -223,3 +223,4 @@ const LocalDB = (() => {
 
     return { getAll, getById, query, insert, patch, reset };
  })();
+ 

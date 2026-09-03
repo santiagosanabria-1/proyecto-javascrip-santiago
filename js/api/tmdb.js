@@ -11,6 +11,7 @@ const TMDB = (() => {
             throw new Error("Falta configurar CONFIG.TMDB_API_KEY en js/config.js.");
         }
     }
+    
 
     // Acepta tanto una API Key v3 (32 chars hex) como un Read Access Token v4
     // (JWT con puntos) — cada uno se autentica de forma distinta.
