@@ -1,20 +1,4 @@
-/**
- * js/cartelera.js
- * Lógica de index.html.
- *
- * "En cartelera" (grid, hero, galería) muestra SOLO la programación real
- * del cine (`billboard` en localStorage, hidratada con TMDB) -- son las
- * únicas películas con funciones/asientos reales para comprar. Antes esta
- * grilla mostraba las películas "populares" de TMDB (miles de títulos),
- * y como casi ninguna estaba en el `billboard`, casi cualquier "Ver
- * detalles" terminaba en "esta película no tiene funciones programadas":
- * se sentía roto para lo que se supone que es una cartelera de cine real.
- *
- * La BÚSQUEDA sigue consultando el catálogo completo de TMDB (con
- * paginación) porque buscar "cualquier película" es una acción explícita
- * del usuario -- ahí SÍ es normal y esperable no encontrar funciones,
- * igual que buscar un título que un cine real no está proyectando.
- */
+
 const GENRE_FILTER_IDS = { accion: 28, scifi: 878, drama: 18, comedia: 35, terror: 27 };
 
 // `billboard` (la programación real) se hidrata una sola vez y se reutiliza

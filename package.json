@@ -4,3 +4,5 @@
   "private": true,
   "description": "CINEVERSE - Frontend vanilla (GSAP + ScrollTrigger) conectado a TMDB, con datos propios del cine persistidos en localStorage"
 }
+
+

@@ -1,8 +1,4 @@
-/**
- * js/api/tmdb.js
- * Única puerta de entrada a TMDB. Ningún otro módulo hace fetch() directo
- * a api.themoviedb.org.
- */
+
 const TMDB = (() => {
     // Caché en memoria de solo-sesión: evita repetir /movie/:id y
     // /movie/:id/credits cuando el usuario vuelve a pasar por la misma
@@ -15,6 +11,7 @@ const TMDB = (() => {
             throw new Error("Falta configurar CONFIG.TMDB_API_KEY en js/config.js.");
         }
     }
+    
 
     // Acepta tanto una API Key v3 (32 chars hex) como un Read Access Token v4
     // (JWT con puntos) — cada uno se autentica de forma distinta.

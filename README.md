@@ -4,6 +4,8 @@
 
 ### Sistema web de gestión de cartelera y venta de entradas de cine
 
+
+
 Plataforma de cine premium construida en **JavaScript vanilla puro**: cartelera real,
 ficha de película con datos de [TMDB](https://www.themoviedb.org/), mapa de asientos
 interactivo, reservas y compras con **prevención real de doble venta**, pasarela de

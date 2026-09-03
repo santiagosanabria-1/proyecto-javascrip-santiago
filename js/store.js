@@ -1,8 +1,4 @@
-/**
- * js/store.js
- * Estado del flujo de reserva/compra compartido entre páginas (sessionStorage).
- * Sin lógica de negocio: solo lectura/escritura del "carrito" función+asientos.
- */
+
 const FLOW_KEY = "cineverse_flow";
 
 const FlowStore = {

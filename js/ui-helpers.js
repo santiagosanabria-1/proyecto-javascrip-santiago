@@ -1,8 +1,4 @@
-/**
- * js/ui-helpers.js
- * Helpers de UI reutilizables entre páginas: estados (loading/error/empty),
- * formato de datos y el modal de trailer. Sin lógica de negocio.
- */
+
 
 function showLoading(container, message = "Cargando...") {
     container.innerHTML = `

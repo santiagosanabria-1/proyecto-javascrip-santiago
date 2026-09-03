@@ -1,12 +1,5 @@
 /**
- * js/animations/global.js
- * Debe cargarse ANTES que home.js / movie.js / seats.js: expone
- * `AnimUtils` (helpers internos compartidos) y crea el namespace público
- * `Animations`, que los demás módulos completan con `Object.assign`.
- *
- * Contiene además lo que corre igual en las 4 páginas: cursor, navbar,
- * modal de trailer y la transición de vista checkout -> ticket.
- */
+
 const AnimUtils = (() => {
     const hasGSAP = typeof gsap !== "undefined";
     if (hasGSAP && typeof ScrollTrigger !== "undefined") gsap.registerPlugin(ScrollTrigger);

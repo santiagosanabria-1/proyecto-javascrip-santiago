@@ -715,4 +715,5 @@ ul { list-style: none; }
     .ticket__body { background: #fff; }
     .ticket-grid .k, .checkout-summary__row span:first-child, .field-label { color: #555 !important; }
     .ticket-grid .v, .ticket-code, .checkout-summary__movie { color: #111 !important; }
-}
+.seat[data-type="vip"].seat--available {border-color: var(--gold);}
+

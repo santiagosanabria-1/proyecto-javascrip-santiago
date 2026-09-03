@@ -124,7 +124,7 @@ function initQtyStepper() {
     const plusBtn = document.querySelector("[data-qty-plus]");
     if (!valueEl) return;
 
-    const MAX_QTY = 8;
+    const MAX_QTY = 5;
     const render = () => {
         valueEl.textContent = funcion_desiredQuantity;
         if (minusBtn) minusBtn.disabled = funcion_desiredQuantity <= 1;

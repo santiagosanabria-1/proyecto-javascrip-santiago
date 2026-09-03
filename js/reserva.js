@@ -1,9 +1,4 @@
-/**
- * js/reserva.js
- * Lógica de reserva.html: resumen final, pasarela de pago simulada,
- * revalidación real anti-doble-venta contra localStorage, persistencia de
- * la reserva/compra y transición a la vista de ticket.
- */
+
 let reserva_flow = null;
 let reserva_confirmed = false; // true tras crear la reserva/compra: los asientos ya son "reserved"/"sold" y no hay nada que liberar
 let reserva_leaving = false; // true durante una navegación intencional (cancelar) -- evita liberar dos veces

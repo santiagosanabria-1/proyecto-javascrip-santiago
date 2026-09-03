@@ -1,8 +1,5 @@
 /**
- * js/pelicula.js
- * Lógica de pelicula.html: detalle real de TMDB (ficha, reparto, trailer)
- * + funciones propias del cine (localStorage) + valoraciones.
- */
+
 let pelicula_tmdbId = null;
 let pelicula_functionsByDate = {};
 let pelicula_activeDate = null;
