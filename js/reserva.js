@@ -7,6 +7,8 @@
 let reserva_flow = null;
 let reserva_confirmed = false; // true tras crear la reserva/compra: los asientos ya son "reserved"/"sold" y no hay nada que liberar
 let reserva_leaving = false; // true durante una navegación intencional (cancelar) -- evita liberar dos veces
+let reserva_promo = null; // { code, discount, active } una vez validado contra JSON Server -- null si no hay ninguno aplicado
+let reserva_paymentMethod = "tarjeta"; // "tarjeta" | "efectivo" | "pse" (Examen 3 · RF-09)
 
 document.addEventListener("DOMContentLoaded", () => {
     const btnConfirm = document.getElementById("btn-confirm");
@@ -24,6 +26,8 @@ document.addEventListener("DOMContentLoaded", () => {
     initCardVisual();
     initDownloadTicket();
     initCancelLink();
+    initPaymentMethods();
+    initPromoForm();
     btnConfirm.addEventListener("click", () => handleConfirm(btnConfirm, "purchase"));
 
     const reserveBtn = document.querySelector("[data-reserve-btn]");
@@ -84,12 +88,43 @@ function prefillFromSession() {
     if (emailInput && !emailInput.value) emailInput.value = user.email;
 }
 
+/**
+ * Desglose por asiento + subtotal/descuento/total (Examen 3 · RF-02/RF-04/
+ * RF-07). Esta es la vista PREVIA (con el precio que trajo funcion.html) --
+ * el número que realmente se cobra se recalcula desde cero en el servidor
+ * dentro de handleConfirm(), nunca se confía en esto para guardar la venta.
+ */
+function updateTotals(flow) {
+    const breakdownEl = document.querySelector("[data-seat-breakdown]");
+    const subtotal = flow.seats.reduce((sum, s) => sum + seatUnitPrice(flow.price, s.type), 0);
+
+    if (breakdownEl) {
+        breakdownEl.innerHTML = flow.seats
+            .map((s) => {
+                const type = s.type || "standard";
+                const price = seatUnitPrice(flow.price, type);
+                const typeTag = type === "standard" ? "" : `<span class="seat-breakdown__type seat-breakdown__type--${type}">${SEAT_TYPE_LABEL[type]}</span>`;
+                return `<div class="seat-breakdown__row"><span class="seat-breakdown__seat">${s.seatCode} ${typeTag}</span><span>${formatCurrency(price)}</span></div>`;
+            })
+            .join("");
+    }
+
+    const discount = reserva_promo ? Math.round((subtotal * reserva_promo.discount) / 100) : 0;
+    const total = subtotal - discount;
+
+    document.querySelectorAll("[data-checkout-subtotal]").forEach((el) => (el.textContent = formatCurrency(subtotal)));
+    document.querySelectorAll("[data-checkout-discount]").forEach((el) => (el.textContent = `-${formatCurrency(discount)}`));
+    document.querySelectorAll("[data-checkout-discount-row]").forEach((el) => el.classList.toggle("hidden", discount === 0));
+    document.querySelectorAll("[data-checkout-total]").forEach((el) => (el.textContent = formatCurrency(total)));
+
+    return { subtotal, discount, total };
+}
+
 function renderSummary(flow) {
     document.querySelectorAll("[data-checkout-seats]").forEach((el) => {
         el.textContent = `${flow.seats.map((s) => s.seatCode).join(", ")} (${flow.quantity} ${flow.quantity === 1 ? "ticket" : "tickets"})`;
     });
-    document.querySelectorAll("[data-checkout-total]").forEach((el) => (el.textContent = formatCurrency(flow.total)));
-    document.querySelectorAll("[data-checkout-unit-price]").forEach((el) => (el.textContent = formatCurrency(flow.price)));
+    updateTotals(flow);
     document.querySelectorAll("[data-checkout-time]").forEach((el) => (el.textContent = flow.time || "—"));
     document.querySelectorAll("[data-checkout-date]").forEach((el) => (el.textContent = formatDate(flow.date)));
     document.querySelectorAll("[data-checkout-room]").forEach(async (el) => {
@@ -219,6 +254,73 @@ function runPaymentSimulation(triggerBtn) {
     });
 }
 
+// ---------------------------------------------------------------------------
+// Método de pago (Examen 3 · RF-09): Tarjeta / Efectivo / PSE, obligatorio
+// para comprar. Con Efectivo/PSE se ocultan los campos de tarjeta y no se
+// exige llenarlos (no hay nada que "simular" en esos dos casos).
+// ---------------------------------------------------------------------------
+function initPaymentMethods() {
+    const group = document.querySelector("[data-payment-methods]");
+    const cardFields = document.querySelector("[data-card-fields]");
+    if (!group) return;
+
+    const buttons = group.querySelectorAll("[data-payment-method]");
+    buttons.forEach((btn) => {
+        btn.addEventListener("click", () => {
+            buttons.forEach((b) => b.classList.remove("is-active"));
+            btn.classList.add("is-active");
+            reserva_paymentMethod = btn.dataset.paymentMethod;
+            if (cardFields) cardFields.classList.toggle("hidden", reserva_paymentMethod !== "tarjeta");
+        });
+    });
+}
+
+// ---------------------------------------------------------------------------
+// Código promocional (Examen 3 · RF-05/06/07/08)
+// ---------------------------------------------------------------------------
+function initPromoForm() {
+    const applyBtn = document.querySelector("[data-promo-apply]");
+    const input = document.querySelector("[data-promo-input]");
+    const resultEl = document.querySelector("[data-promo-result]");
+    if (!applyBtn || !input) return;
+
+    applyBtn.addEventListener("click", async () => {
+        const code = input.value.trim().toUpperCase();
+        if (!code) return;
+
+        // RF-08: el mismo código no puede volver a aplicarse (no acumula el
+        // descuento por hacer clic varias veces en "Aplicar").
+        if (reserva_promo && reserva_promo.code === code) {
+            resultEl.textContent = "Este código ya está aplicado.";
+            resultEl.className = "promo-result promo-result--ok";
+            return;
+        }
+
+        applyBtn.disabled = true;
+        const originalLabel = applyBtn.textContent;
+        applyBtn.textContent = "Validando...";
+        try {
+            const promo = await CINE.getPromoByCode(code);
+            if (!promo || !promo.active) {
+                reserva_promo = null;
+                resultEl.textContent = "Código promocional inválido.";
+                resultEl.className = "promo-result promo-result--error";
+            } else {
+                reserva_promo = promo;
+                resultEl.textContent = `Código aplicado: ${promo.discount}% de descuento.`;
+                resultEl.className = "promo-result promo-result--ok";
+            }
+            updateTotals(reserva_flow);
+        } catch (err) {
+            resultEl.textContent = err.message || "No se pudo validar el código. Intenta nuevamente.";
+            resultEl.className = "promo-result promo-result--error";
+        } finally {
+            applyBtn.disabled = false;
+            applyBtn.textContent = originalLabel;
+        }
+    });
+}
+
 async function handleConfirm(triggerBtn, mode) {
     const nameInput = document.querySelector("[data-input-name]");
     const emailInput = document.querySelector("[data-input-email]");
@@ -241,9 +343,11 @@ async function handleConfirm(triggerBtn, mode) {
         return;
     }
 
-    // La tarjeta solo se exige para "comprar" -- "reservar sin pagar" no cobra nada.
+    // La tarjeta solo se exige para "comprar" con método "Tarjeta" -- ni
+    // "reservar sin pagar" ni pagar con Efectivo/PSE cobran ni piden datos
+    // de tarjeta (Examen 3 · RF-09).
     let card = null;
-    if (mode === "purchase") {
+    if (mode === "purchase" && reserva_paymentMethod === "tarjeta") {
         card = validateCard();
         if (!card.ok) {
             const field = document.querySelector(card.field);
@@ -261,7 +365,7 @@ async function handleConfirm(triggerBtn, mode) {
     triggerBtn.disabled = true;
 
     try {
-        if (mode === "purchase") {
+        if (mode === "purchase" && reserva_paymentMethod === "tarjeta") {
             await runPaymentSimulation(triggerBtn);
         } else {
             triggerBtn.innerHTML = `<span class="spinner" style="width:16px;height:16px;"></span> Procesando...`;
@@ -285,10 +389,12 @@ async function handleConfirm(triggerBtn, mode) {
 
         // El precio NUNCA se toma de `reserva_flow` (sessionStorage/memoria
         // del cliente, editable desde la consola) -- se recalcula desde el
-        // precio real de la función en JSON Server. Sin esto, cambiar
-        // `reserva_flow.total` antes de confirmar dejaba comprar cualquier
-        // cantidad de entradas por el precio que el cliente quisiera
-        // (encontrado y verificado en la auditoría).
+        // precio real de la función y el TIPO real de cada asiento, los dos
+        // leídos de nuevo desde JSON Server. Sin esto, cambiar
+        // `reserva_flow.total` (o el `type` de un asiento) antes de
+        // confirmar dejaba comprar cualquier cantidad de entradas -- o
+        // asientos VIP al precio de standard -- por el precio que el
+        // cliente quisiera (encontrado y verificado en la auditoría).
         const realFunction = await CINE.getFunction(reserva_flow.functionId);
         if (!realFunction) {
             showCheckoutError("La función seleccionada ya no existe. Vuelve a elegir un horario.");
@@ -296,10 +402,35 @@ async function handleConfirm(triggerBtn, mode) {
             triggerBtn.innerHTML = originalLabel;
             return;
         }
-        const unitPrice = realFunction.price;
-        const total = unitPrice * reserva_flow.seats.length;
+        const roomSeats = await CINE.getSeatsByRoom(reserva_flow.roomId);
+        const seatTypeById = new Map(roomSeats.map((s) => [String(s.id), s.type || "standard"]));
+
+        const seatLines = reserva_flow.seats.map((s) => {
+            const type = seatTypeById.get(String(s.seatId)) || "standard";
+            return { seatId: Number(s.seatId), seatCode: s.seatCode, location: s.location, type, price: seatUnitPrice(realFunction.price, type) };
+        });
+        const subtotal = seatLines.reduce((sum, s) => sum + s.price, 0);
+
+        // El código promocional también se revalida contra el servidor en
+        // este momento (no se confía en el objeto que quedó en memoria
+        // desde que se aplicó, por si mientras tanto se desactivó).
+        let discount = 0;
+        let promoCode = null;
+        if (reserva_promo) {
+            const freshPromo = await CINE.getPromoByCode(reserva_promo.code).catch(() => null);
+            if (freshPromo && freshPromo.active) {
+                discount = Math.round((subtotal * freshPromo.discount) / 100);
+                promoCode = freshPromo.code;
+            } else {
+                showToast("El código promocional aplicado ya no es válido; se retiró del total.", "error");
+            }
+        }
+        const total = subtotal - discount;
 
         const sessionUser = AuthStore.get();
+        const paymentMethod =
+            mode === "purchase" ? (reserva_paymentMethod === "tarjeta" ? { brand: card.brand, last4: card.last4 } : reserva_paymentMethod === "efectivo" ? "Efectivo" : "PSE") : null;
+
         const payload = {
             userId: sessionUser ? sessionUser.id : null,
             userName: nameInput?.value.trim() || "",
@@ -308,21 +439,19 @@ async function handleConfirm(triggerBtn, mode) {
             functionId: reserva_flow.functionId,
             roomId: reserva_flow.roomId,
             quantity: reserva_flow.quantity,
-            seats: reserva_flow.seats.map((s) => ({ seatId: Number(s.seatId), seatCode: s.seatCode, location: s.location }))
+            seats: seatLines,
+            unitPrice: realFunction.price,
+            subtotal,
+            discount,
+            promoCode,
+            total,
+            // Nunca se guarda el número completo ni el CVV -- solo lo que
+            // cualquier pasarela real devolvería para un recibo.
+            paymentMethod
         };
 
         const newStatus = mode === "purchase" ? "sold" : "reserved";
-        const record =
-            mode === "purchase"
-                ? await CINE.createPurchase({
-                      ...payload,
-                      unitPrice,
-                      total,
-                      // Nunca se guarda el número completo ni el CVV -- solo lo
-                      // que cualquier pasarela real devolvería para un recibo.
-                      paymentMethod: { brand: card.brand, last4: card.last4 }
-                  })
-                : await CINE.createReservation(payload);
+        const record = mode === "purchase" ? await CINE.createPurchase(payload) : await CINE.createReservation(payload);
 
         // 2) Marcar los asientos como vendidos/reservados en JSON Server (ya
         // no están "en selección" de nadie, así que se limpia el holder).
@@ -331,7 +460,7 @@ async function handleConfirm(triggerBtn, mode) {
         );
 
         reserva_confirmed = true; // los asientos ya son reserved/sold: nada que liberar al salir
-        showSuccessView(record, mode, total);
+        showSuccessView(record, mode);
         FlowStore.clear();
     } catch (err) {
         console.error(err);
@@ -341,7 +470,7 @@ async function handleConfirm(triggerBtn, mode) {
     }
 }
 
-function showSuccessView(record, mode, realTotal) {
+function showSuccessView(record, mode) {
     const viewCheckout = document.getElementById("view-checkout");
     const viewSuccess = document.getElementById("view-success");
     if (!viewCheckout || !viewSuccess) return;
@@ -356,16 +485,23 @@ function showSuccessView(record, mode, realTotal) {
     const emailEl = document.querySelector("[data-ticket-email]");
     if (emailEl) emailEl.textContent = record.email || "—";
     const totalEl = document.querySelector("[data-ticket-total]");
-    // El total mostrado es el mismo que se guardó (precio real recalculado
-    // en el servidor), nunca el que traía `reserva_flow` del cliente.
-    if (totalEl) totalEl.textContent = formatCurrency(record.total ?? realTotal);
+    // El total, subtotal y descuento mostrados son los mismos que se
+    // guardaron (recalculados en el servidor), nunca los que traía
+    // `reserva_flow`/la vista previa del cliente.
+    if (totalEl) totalEl.textContent = formatCurrency(record.total);
+    document.querySelectorAll("[data-checkout-subtotal]").forEach((el) => (el.textContent = formatCurrency(record.subtotal)));
+    document.querySelectorAll("[data-checkout-discount]").forEach((el) => (el.textContent = `-${formatCurrency(record.discount || 0)}`));
+    document.querySelectorAll("[data-checkout-discount-row]").forEach((el) => el.classList.toggle("hidden", !record.discount));
+
     const paymentRow = document.querySelector("[data-ticket-payment-row]");
     const paymentEl = document.querySelector("[data-ticket-payment]");
     if (mode === "purchase" && record.paymentMethod) {
-        if (paymentEl) paymentEl.textContent = `${record.paymentMethod.brand} •••• ${record.paymentMethod.last4}`;
+        // Tarjeta guarda {brand, last4}; Efectivo/PSE guardan el método como texto plano.
+        const paymentText = typeof record.paymentMethod === "string" ? record.paymentMethod : `${record.paymentMethod.brand} •••• ${record.paymentMethod.last4}`;
+        if (paymentEl) paymentEl.textContent = paymentText;
         if (paymentRow) paymentRow.classList.remove("hidden");
     } else if (paymentRow) {
-        paymentRow.classList.add("hidden"); // reserva sin pagar: no hay tarjeta que mostrar
+        paymentRow.classList.add("hidden"); // reserva sin pagar: no hay método que mostrar
     }
 
     document.querySelectorAll("[data-ticket-code]").forEach((el) => {

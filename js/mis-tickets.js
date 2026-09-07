@@ -69,6 +69,13 @@ async function hydrateTicket(item) {
     return { ...item, movie, room, fn };
 }
 
+/** Tarjeta guarda {brand, last4}; Efectivo/PSE (Examen 3) guardan el método
+ *  como texto plano -- se soportan ambas formas sin romper compras viejas. */
+function paymentMethodText(paymentMethod) {
+    if (!paymentMethod) return "";
+    return typeof paymentMethod === "string" ? paymentMethod : `${paymentMethod.brand} •••• ${paymentMethod.last4}`;
+}
+
 function ticketCode(t) {
     const prefix = t.kind === "purchase" ? "CVRS" : "RSV";
     return `${prefix}-${String(t.id).padStart(4, "0")}`;
@@ -96,7 +103,7 @@ function rowMarkup(t) {
                     <span>${t.room ? t.room.name.toUpperCase() : "SALA"}</span>
                     <span>${seats || "—"}</span>
                 </div>
-                ${isPurchase ? `<div class="ticket-history-item__price">${formatCurrency(t.total)}${t.paymentMethod ? ` · ${t.paymentMethod.brand} •••• ${t.paymentMethod.last4}` : ""}</div>` : ""}
+                ${isPurchase ? `<div class="ticket-history-item__price">${formatCurrency(t.total)}${t.paymentMethod ? ` · ${paymentMethodText(t.paymentMethod)}` : ""}</div>` : ""}
             </div>
             <div class="ticket-history-item__code">
                 <span class="ticket-code">${ticketCode(t)}</span>
@@ -130,7 +137,8 @@ function ticketMarkup(t) {
                     <div><span class="k">ASIENTOS</span><span class="v">${seats || "—"}</span></div>
                     <div><span class="k">COMPRADOR</span><span class="v">${buyerName}</span></div>
                     <div><span class="k">CORREO</span><span class="v">${buyerEmail}</span></div>
-                    ${isPurchase && t.paymentMethod ? `<div><span class="k">PAGO CON</span><span class="v">${t.paymentMethod.brand} •••• ${t.paymentMethod.last4}</span></div>` : ""}
+                    ${isPurchase && t.paymentMethod ? `<div><span class="k">PAGO CON</span><span class="v">${paymentMethodText(t.paymentMethod)}</span></div>` : ""}
+                    ${isPurchase && t.discount ? `<div><span class="k">DESCUENTO</span><span class="v">-${formatCurrency(t.discount)}</span></div>` : ""}
                     ${isPurchase ? `<div><span class="k">TOTAL</span><span class="v" style="color:var(--gold);">${formatCurrency(t.total)}</span></div>` : ""}
                 </div>
                 <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--border);padding-top:18px;">

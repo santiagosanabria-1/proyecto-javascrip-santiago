@@ -204,6 +204,13 @@ const CINE = (() => {
         return request("/ratings", { method: "POST", body: JSON.stringify({ createdAt: new Date().toISOString(), ...data }) });
     }
 
+    // ---------- Códigos promocionales (Examen 3) ----------
+    /** null si el código no existe (no lanza) -- el llamador decide el mensaje. */
+    async function getPromoByCode(code) {
+        const matches = await request(`/promos?code=${encodeURIComponent(code.trim().toUpperCase())}`);
+        return matches[0] || null;
+    }
+
     // ---------- Usuarios (login/registro) ----------
     /** null si no existe ninguna cuenta con ese email (no lanza error). */
     async function getUserByEmail(email) {
@@ -236,6 +243,7 @@ const CINE = (() => {
         getPurchasesByUser,
         getRatingsByMovie,
         createRating,
+        getPromoByCode,
         getUserByEmail,
         createUser
     };

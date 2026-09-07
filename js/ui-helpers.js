@@ -32,6 +32,22 @@ function formatCurrency(amount) {
     return `$${Number(amount).toLocaleString("es-CL")}`;
 }
 
+/**
+ * Tipos de asiento (Examen 3 · RF-02): el precio de cada silla depende de
+ * su categoría. `standard` es el precio base de la función tal cual;
+ * `premium` y `vip` son recargos sobre ese mismo precio base. Se centraliza
+ * acá porque tanto funcion.js (vista previa mientras se elige) como
+ * reserva.js (recálculo confiable en el servidor antes de cobrar) necesitan
+ * exactamente la misma fórmula.
+ */
+const SEAT_TYPE_MULTIPLIER = { standard: 1, premium: 1.25, vip: 1.5 };
+const SEAT_TYPE_LABEL = { standard: "Standard", premium: "Premium", vip: "VIP" };
+
+function seatUnitPrice(basePrice, seatType) {
+    const multiplier = SEAT_TYPE_MULTIPLIER[seatType] ?? 1;
+    return Math.round(basePrice * multiplier);
+}
+
 function formatRuntime(minutes) {
     if (!minutes && minutes !== 0) return "—";
     const h = Math.floor(minutes / 60);

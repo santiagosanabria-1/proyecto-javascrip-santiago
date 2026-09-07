@@ -65,6 +65,19 @@ function locationForColumn(col, seatsPerRow) {
     return "Derecha";
 }
 
+/**
+ * Categoría del asiento según su fila (RF-01/RF-02 del Examen 3): la última
+ * fila de la sala (la de mejor perspectiva, al fondo) es `vip`, la
+ * penúltima es `premium`, el resto `standard`. Determinístico por fila, no
+ * aleatorio -- así el seed es reproducible y cada sala termina con los tres
+ * tipos representados.
+ */
+function seatTypeForRow(rowIndex, totalRows) {
+    if (rowIndex === totalRows - 1) return "vip";
+    if (rowIndex === totalRows - 2) return "premium";
+    return "standard";
+}
+
 function buildSeats() {
     const seats = [];
     let id = 1;
@@ -79,7 +92,7 @@ function buildSeats() {
                     number: n,
                     seatCode: `${row}${n}`,
                     location: locationForColumn(n, room.seatsPerRow),
-                    type: room.type === "IMAX" && r === 0 ? "premium" : "standard"
+                    type: seatTypeForRow(r, room.rows)
                 });
             }
         }
@@ -148,6 +161,18 @@ function buildFunctionSeats(functions, seats) {
     return functionSeats;
 }
 
+/**
+ * Códigos promocionales (Examen 3 · RF-05/RF-06). Incluye uno vencido/
+ * inactivo a propósito para poder probar el camino de "código inválido"
+ * sin depender de escribir uno inexistente.
+ */
+const PROMOS = [
+    { id: 1, code: "CINE20", discount: 20, active: true },
+    { id: 2, code: "BIENVENIDO10", discount: 10, active: true },
+    { id: 3, code: "VERANO15", discount: 15, active: true },
+    { id: 4, code: "PROMOVENCIDA", discount: 50, active: false }
+];
+
 function build() {
     const seats = buildSeats();
     const functions = buildFunctions();
@@ -159,6 +184,7 @@ function build() {
         seats,
         functions,
         functionSeats,
+        promos: PROMOS,
         reservations: [],
         purchases: [],
         ratings: [],
