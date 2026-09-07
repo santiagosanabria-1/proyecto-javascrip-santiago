@@ -173,14 +173,15 @@ const CINE = (() => {
     async function createUser(data) {
         return LocalDB.insert("users", { createdAt: new Date().toISOString(), ...data, email: data.email.trim().toLowerCase() });
     }
+    // ---------- Códigos promocionales (Examen 3) ----------
+    /** null si el código no existe (no lanza) -- el llamador decide el mensaje. */
     async function getPromoByCode(code) {
         const normalized = String(code || "").trim().toUpperCase();
-        if (normalized) return null;
-        const matches = LocalDB.query("promoCodes", (p) => String(p.code).toUpperCase() === normalized);
+        if (!normalized) return null;
+        const matches = LocalDB.query("promocodes", (p) => String(p.code).toUpperCase() === normalized);
         return matches[0] || null;
-        }
+    }
 
-        
     return {
         getBillboard,
         getRoom,

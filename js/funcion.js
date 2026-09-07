@@ -94,7 +94,8 @@ function restoreOwnSelection(seatMapData) {
         seatCode: seat.seatCode,
         location: seat.location,
         row: seat.row,
-        number: seat.number
+        number: seat.number,
+        type: seat.type
     }));
     funcion_desiredQuantity = Math.max(funcion_desiredQuantity, mine.length);
     const valueEl = document.querySelector("[data-qty-value]");
@@ -198,13 +199,18 @@ function renderSeatMap(seatPanel, seats, room) {
                 const stateClass = seat.status === "reserved" || seat.status === "sold" ? `seat--${seat.status}` : heldByOther ? "seat--held" : mine ? "seat--selected" : "seat--available";
                 const content = seat.status === "reserved" || seat.status === "sold" ? SEAT_ICONS[seat.status] : heldByOther ? "…" : mine ? SEAT_ICONS.selected : seat.seatCode;
                 const label = heldByOther ? "siendo elegido por otra persona" : SEAT_LABELS[seat.status] || "disponible";
-                return `<button class="seat ${stateClass}"
+                const typeLabel = SEAT_TYPE_LABEL[seat.type] || "Standard";
+                const unitPrice = seatUnitPrice(funcion_pricePerSeat, seat.type);
+                // El tipo se comunica con una etiqueta de texto (no solo color),
+                // visible incluso cuando el asiento está ocupado/reservado.
+                const typeTag = seat.type && seat.type !== "standard" ? `<span class="seat__type-tag">${seat.type === "vip" ? "V" : "P"}</span>` : "";
+                return `<button class="seat ${stateClass} seat--type-${seat.type || "standard"}"
                     data-seat-id="${seat.id}" data-function-seat-id="${seat.functionSeatId}"
                     data-seat-code="${seat.seatCode}" data-location="${seat.location}"
-                    data-row="${seat.row}" data-number="${seat.number}"
-                    title="${seat.seatCode} · ${seat.location} · ${label}"
-                    aria-label="Asiento ${seat.seatCode}, ${label}"
-                    ${isTaken ? "disabled" : ""}>${content}</button>`;
+                    data-row="${seat.row}" data-number="${seat.number}" data-seat-type="${seat.type || "standard"}"
+                    title="${seat.seatCode} · ${typeLabel} (${formatCurrency(unitPrice)}) · ${seat.location} · ${label}"
+                    aria-label="Asiento ${seat.seatCode}, categoría ${typeLabel}, ${label}"
+                    ${isTaken ? "disabled" : ""}>${content}${typeTag}</button>`;
             };
             return `
             <div class="seat-row">
@@ -240,6 +246,13 @@ function renderSeatMap(seatPanel, seats, room) {
  * estar disponible y este click se rechaza con un aviso, en vez de dejar
  * que dos personas "elijan" la misma silla en pantalla.
  */
+/** Reconstruye la etiqueta de categoría (P/V) a partir del dataset del botón
+ *  -- usar innerHTML/textContent para cambiar el ícono central la borraba. */
+function typeTagHtml(btn) {
+    const type = btn.dataset.seatType;
+    return type && type !== "standard" ? `<span class="seat__type-tag">${type === "vip" ? "V" : "P"}</span>` : "";
+}
+
 async function toggleSeat(btn) {
     const seatId = btn.dataset.seatId;
     const already = funcion_selected.some((s) => s.seatId === seatId);
@@ -249,7 +262,7 @@ async function toggleSeat(btn) {
         funcion_selected = funcion_selected.filter((s) => s.seatId !== seatId);
         btn.classList.remove("seat--selected");
         btn.classList.add("seat--available");
-        btn.textContent = btn.dataset.seatCode;
+        btn.innerHTML = btn.dataset.seatCode + typeTagHtml(btn);
         renderSummary();
         CINE.releaseFunctionSeat(entry.functionSeatId).catch((err) => console.error("No se pudo liberar el asiento:", err));
         return;
@@ -274,11 +287,12 @@ async function toggleSeat(btn) {
             seatCode: btn.dataset.seatCode,
             location: btn.dataset.location,
             row: btn.dataset.row,
-            number: btn.dataset.number
+            number: btn.dataset.number,
+            type: btn.dataset.seatType
         });
         btn.classList.remove("seat--pending", "seat--available");
         btn.classList.add("seat--selected");
-        btn.textContent = SEAT_ICONS.selected;
+        btn.innerHTML = SEAT_ICONS.selected + typeTagHtml(btn);
         btn.disabled = false;
         renderSummary();
     } catch (err) {
@@ -315,12 +329,21 @@ function renderSummary() {
             ? `${funcion_selected.map((s) => s.seatCode).join(", ")} (${funcion_selected.length} ${funcion_selected.length === 1 ? "ticket" : "tickets"})`
             : "Ninguno seleccionado";
     }
-    if (unitPriceEl) unitPriceEl.textContent = formatCurrency(funcion_pricePerSeat);
-    if (totalEl) totalEl.textContent = formatCurrency(funcion_selected.length * funcion_pricePerSeat);
+    // El precio depende del tipo de cada silla (standard/premium/vip), así
+    // que el total es la suma de cada una a su propio precio, no
+    // "cantidad × precio base" (Examen 3 · RF-02).
+    const subtotal = funcion_selected.reduce((sum, s) => sum + seatUnitPrice(funcion_pricePerSeat, s.type), 0);
+    if (unitPriceEl) unitPriceEl.textContent = `desde ${formatCurrency(funcion_pricePerSeat)}`;
+    if (totalEl) totalEl.textContent = formatCurrency(subtotal);
     if (locationEl) {
-        // Fila/Número/Ubicación explícitos por cada silla elegida.
+        // Fila/Número/Ubicación/Tipo/Precio explícitos por cada silla elegida.
         locationEl.innerHTML = funcion_selected.length
-            ? funcion_selected.map((s) => `${s.seatCode} — Fila ${s.row} · Número ${s.number} · ${s.location}`).join("<br/>")
+            ? funcion_selected
+                  .map(
+                      (s) =>
+                          `${s.seatCode} — ${SEAT_TYPE_LABEL[s.type] || "Standard"} · Fila ${s.row} · Número ${s.number} · ${s.location} · ${formatCurrency(seatUnitPrice(funcion_pricePerSeat, s.type))}`
+                  )
+                  .join("<br/>")
             : "";
     }
 
@@ -348,12 +371,16 @@ function handleContinue() {
         return;
     }
     funcion_leaving = true; // los asientos siguen "selected": no se liberan al navegar a reserva.html
+    const subtotal = funcion_selected.reduce((sum, s) => sum + seatUnitPrice(funcion_pricePerSeat, s.type), 0);
     FlowStore.set({
         seats: funcion_selected,
         quantity: funcion_selected.length,
         movieTitle: funcion_movieTitle,
         holderToken: SessionToken.get(),
-        total: (funcion_selected.length * funcion_pricePerSeat).toFixed(2)
+        // Vista previa optimista para reserva.html -- se recalcula desde el
+        // precio real y el tipo real de cada asiento antes de cobrar (ver
+        // reserva.js), esto solo evita que el resumen se vea vacío mientras carga.
+        total: subtotal.toFixed(2)
     });
     window.location.href = "reserva.html";
 }

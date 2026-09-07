@@ -30,6 +30,12 @@
     --gold-strong: #ff8f1f;
     --gold-deep: #5c3200;
     --danger: #ff6b6b;
+    --success: #3ddc84;
+    /* Tercer acento, exclusivo de la categoría de asiento VIP (Examen 3) --
+       ni azul (marca) ni dorado (CTA/seleccionado): así "seleccionado" y
+       "VIP" nunca compiten por el mismo color. */
+    --violet: #b06bff;
+    --violet-deep: #2a1240;
 
     /* Radios */
     --r-sm: 8px;
@@ -715,5 +721,42 @@ ul { list-style: none; }
     .ticket__body { background: #fff; }
     .ticket-grid .k, .checkout-summary__row span:first-child, .field-label { color: #555 !important; }
     .ticket-grid .v, .ticket-code, .checkout-summary__movie { color: #111 !important; }
-.seat[data-type="vip"].seat--available {border-color: var(--gold);}
+}
+
+/* ================= TIPOS DE ASIENTO (Examen 3) =================
+   Standard/premium/vip: además del color, cada tipo lleva su propia
+   etiqueta (P/V) sobre el asiento -- el color nunca es el único
+   mecanismo, así sigue siendo legible para daltonismo. Standard no
+   lleva etiqueta (es el valor por defecto, ya lo dice la leyenda). */
+.seat { position: relative; }
+.seat__type-tag {
+    position: absolute; top: -7px; right: -7px; width: 15px; height: 15px;
+    border-radius: 50%; font-size: 8px; font-weight: 800; line-height: 13px; text-align: center;
+    background: var(--surface-1); border: 1px solid var(--border-strong); color: var(--text-muted);
+}
+.seat--type-premium .seat__type-tag { background: var(--gold-deep); border-color: var(--gold); color: var(--gold); }
+.seat--type-vip .seat__type-tag { background: var(--violet-deep); border-color: var(--violet); color: var(--violet); }
+.seat-legend--types { margin-top: -14px; }
+
+/* Desglose por asiento (RF-04): una fila por silla, con su tipo y precio
+   individual, arriba de subtotal/descuento/total. */
+.seat-breakdown { display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
+.seat-breakdown__row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+.seat-breakdown__seat { display: flex; align-items: center; gap: 8px; color: var(--text-muted); }
+.seat-breakdown__type { font-family: var(--font-label); font-size: 9.5px; letter-spacing: 0.08em; padding: 2px 7px; border-radius: var(--r-full); border: 1px solid var(--border-strong); }
+.seat-breakdown__type--premium { color: var(--gold); border-color: var(--gold); background: rgba(240,169,58,.1); }
+.seat-breakdown__type--vip { color: var(--violet); border-color: var(--violet); background: rgba(176,107,255,.1); }
+.checkout-summary__row--discount span:last-child { color: var(--success); }
+
+/* Código promocional (RF-05/06/07/08) */
+.promo-row { display: flex; gap: 10px; }
+.promo-row .field-input { flex-grow: 1; text-transform: uppercase; }
+.promo-result { font-size: 12px; margin-top: 6px; min-height: 16px; }
+.promo-result--ok { color: var(--success); }
+.promo-result--error { color: var(--danger); }
+
+/* Método de pago (RF-09): elección obligatoria entre Tarjeta/Efectivo/PSE. */
+.payment-method-group { display: flex; gap: 10px; flex-wrap: wrap; }
+.payment-method-group .pill { flex: 1; text-align: center; justify-content: center; }
+[data-card-fields] { display: flex; flex-direction: column; gap: 20px; }
 

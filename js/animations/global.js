@@ -1,5 +1,10 @@
 /**
-
+ * js/animations/global.js
+ * Utilidades GSAP/ScrollTrigger compartidas por todas las páginas
+ * (AnimUtils) y las animaciones de navbar/reveal/ticket comunes a varias
+ * de ellas (Animations). Cada página agrega además su propio módulo
+ * específico (js/animations/home.js, movie.js, seats.js).
+ */
 const AnimUtils = (() => {
     const hasGSAP = typeof gsap !== "undefined";
     if (hasGSAP && typeof ScrollTrigger !== "undefined") gsap.registerPlugin(ScrollTrigger);

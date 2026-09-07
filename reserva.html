@@ -37,6 +37,13 @@
                 <span>MÉTODO DE PAGO</span>
             </div>
 
+            <div class="payment-method-group" data-payment-methods>
+                <button type="button" class="pill is-active" data-payment-method="tarjeta">Tarjeta</button>
+                <button type="button" class="pill" data-payment-method="efectivo">Efectivo</button>
+                <button type="button" class="pill" data-payment-method="pse">PSE</button>
+            </div>
+
+            <div data-card-fields>
             <div class="card-visual" data-card-visual>
                 <div class="card-visual__inner">
                     <div class="card-visual__face card-visual__front">
@@ -84,6 +91,18 @@
                 </div>
             </div>
             <p class="payment-note">Pasarela de pago simulada — no se procesa ningún cobro real. Nunca se guarda el número completo ni el CVV.</p>
+            </div>
+
+            <div class="payment-divider">
+                <span>CÓDIGO PROMOCIONAL</span>
+            </div>
+            <div>
+                <div class="promo-row">
+                    <input class="field-input" type="text" placeholder="Ej. CINE20" data-promo-input/>
+                    <button type="button" class="btn btn-outline" data-promo-apply>Aplicar</button>
+                </div>
+                <p class="promo-result" data-promo-result></p>
+            </div>
 
             <p class="field-error hidden" data-checkout-error><span data-checkout-error-text></span></p>
         </div>
@@ -96,7 +115,11 @@
                 <div class="checkout-summary__row"><span>HORA</span><span data-checkout-time>—</span></div>
                 <div class="checkout-summary__row"><span>SALA</span><span data-checkout-room>—</span></div>
                 <div class="checkout-summary__row"><span>ASIENTOS</span><span data-checkout-seats>Sin selección</span></div>
-                <div class="checkout-summary__row"><span>PRECIO UNITARIO</span><span data-checkout-unit-price>—</span></div>
+            </div>
+            <div class="seat-breakdown" data-seat-breakdown></div>
+            <div class="checkout-summary__rows" style="padding-top:0;margin-top:0;">
+                <div class="checkout-summary__row"><span>SUBTOTAL</span><span data-checkout-subtotal>$0</span></div>
+                <div class="checkout-summary__row checkout-summary__row--discount hidden" data-checkout-discount-row><span>DESCUENTO</span><span data-checkout-discount>-$0</span></div>
             </div>
             <div class="checkout-summary__total"><span>TOTAL</span><b data-checkout-total>$0</b></div>
             <button class="btn btn-gold btn-block" id="btn-confirm">Confirmar compra →</button>
@@ -122,7 +145,8 @@
                     <div><span class="k">HORA</span><span class="v" data-checkout-time>—</span></div>
                     <div><span class="k">SALA</span><span class="v" data-checkout-room>—</span></div>
                     <div><span class="k">ASIENTOS</span><span class="v" data-checkout-seats>—</span></div>
-                    <div><span class="k">PRECIO UNITARIO</span><span class="v" data-checkout-unit-price>—</span></div>
+                    <div><span class="k">SUBTOTAL</span><span class="v" data-checkout-subtotal>—</span></div>
+                    <div data-checkout-discount-row class="hidden"><span class="k">DESCUENTO</span><span class="v" data-checkout-discount>—</span></div>
                     <div><span class="k">COMPRADOR</span><span class="v" data-ticket-buyer>—</span></div>
                     <div><span class="k">CORREO</span><span class="v" data-ticket-email>—</span></div>
                     <div data-ticket-payment-row><span class="k">PAGO CON</span><span class="v" data-ticket-payment>—</span></div>
